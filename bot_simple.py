@@ -4,7 +4,7 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 
 BOT_TOKEN = "8236167537:AAHJ0RAVCzZb6idL2Avm3KGGpT6LY0il5Fk"
 # Замените на ваш URL от Render
-WEB_APP_URL = "https://your-app-name.onrender.com"
+WEB_APP_URL = "https://nineed72925-3c1e-4947-b548-edf8342987db.onrender.com"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [[InlineKeyboardButton("🎮 Играть в Cosmic Miner", web_app={"url": WEB_APP_URL})]]
@@ -22,4 +22,5 @@ def main():
     app.run_polling()
 
 if __name__ == '__main__':
+
     main()
