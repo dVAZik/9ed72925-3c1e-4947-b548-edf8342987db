@@ -14,6 +14,9 @@ from database import db  # Импортируем базу данных
 app = Flask(__name__)
 port = int(os.environ.get("PORT", 5000))
 
+# ID администратора
+ADMIN_USER_ID = "1175194423"
+
 # Безопасная конфигурация администратора
 class AdminConfig:
     def __init__(self):
@@ -699,7 +702,7 @@ def cancel_p2p_order():
         print(f"Error in cancel_p2p_order: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 
-# АДМИН ЭНДПОИНТЫ (остаются без изменений)
+# АДМИН ЭНДПОИНТЫ
 @app.route('/api/admin/login', methods=['POST'])
 def admin_login():
     client_ip = get_client_ip()
@@ -1069,6 +1072,20 @@ def get_stats():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/check_admin', methods=['POST'])
+def check_admin():
+    """Проверка является ли пользователь администратором"""
+    try:
+        user_id = request.json.get('user_id')
+        is_admin = user_id == ADMIN_USER_ID
+        
+        return jsonify({
+            "success": True,
+            "is_admin": is_admin
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
+
 # Автосохранение
 def auto_save():
     while True:
@@ -1084,5 +1101,5 @@ if __name__ == '__main__':
     print(f"📊 Current players: {len(game_data.get('players', {}))}")
     print(f"🔐 Admin panel: /admin")
     print(f"🤝 P2P Market: /p2p")
-    print(f"🔒 Admin password: Set via ADMIN_PASSWORD environment variable")
+    print(f"🔒 Admin user ID: {ADMIN_USER_ID}")
     app.run(host='0.0.0.0', port=port, debug=False)
