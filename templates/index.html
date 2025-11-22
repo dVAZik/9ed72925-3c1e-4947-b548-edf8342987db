@@ -80,6 +80,43 @@
             letter-spacing: 0.5px;
         }
         
+        /* Navigation */
+        .nav-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin: 20px;
+        }
+        
+        .nav-btn {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .nav-btn:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--text-accent);
+        }
+        
+        .nav-btn.admin {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+        }
+        
+        .nav-btn.p2p {
+            background: linear-gradient(45deg, #00ff88, #00b368);
+        }
+        
         /* Market Ticker */
         .market-ticker {
             display: grid;
@@ -405,6 +442,10 @@
             font-feature-settings: 'tnum' 1;
             font-variant-numeric: tabular-nums;
         }
+        
+        .hidden {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
@@ -431,6 +472,16 @@
                     </div>
                 </div>
             </div>
+        </div>
+        
+        <!-- Navigation Buttons -->
+        <div class="nav-buttons">
+            <a href="/p2p" class="nav-btn p2p">
+                🤝 P2P Market
+            </a>
+            <a href="/admin" class="nav-btn admin hidden" id="adminBtn">
+                🔐 Admin Panel
+            </a>
         </div>
         
         <!-- Market Ticker -->
@@ -524,6 +575,8 @@
         let selectedSymbol = 'BTC';
         let currentOrderType = 'buy';
         let baseUrl = window.location.origin;
+        let currentUserId = '';
+        let isAdmin = false;
         
         const CRYPTO_CONFIG = {
             'BTC': { name: 'Bitcoin', color: '#f7931a', emoji: '₿' },
@@ -632,11 +685,36 @@
             return 'trader_' + Math.random().toString(36).substr(2, 9);
         }
         
+        // Проверка администратора
+        async function checkAdminStatus() {
+            try {
+                const response = await fetch(`${baseUrl}/api/check_admin`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: currentUserId })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.is_admin) {
+                    isAdmin = true;
+                    document.getElementById('adminBtn').classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Error checking admin status:', error);
+            }
+        }
+        
         // Загрузка данных
         async function loadMarketData() {
             showLoading(true);
             try {
                 const userId = getUserId();
+                currentUserId = userId;
+                
+                // Проверяем статус администратора
+                await checkAdminStatus();
+                
                 const response = await fetch(`${baseUrl}/api/player/${userId}`);
                 
                 if (!response.ok) throw new Error('Network error');
