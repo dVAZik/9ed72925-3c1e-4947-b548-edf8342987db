@@ -1,37 +1,16 @@
 from flask import Flask, request, jsonify, render_template
-from flask_cors import CORS
 import json
 import os
 from datetime import datetime
+import random
 
 app = Flask(__name__)
-CORS(app)  # Разрешаем запросы из Telegram
 
 # Для Render нужно использовать их порт
 port = int(os.environ.get("PORT", 5000))
 
-# Файл для хранения данных
-DATA_FILE = "game_data.json"
-
-def load_data():
-    """Загружаем данные игроков"""
-    try:
-        if os.path.exists(DATA_FILE):
-            with open(DATA_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-    except Exception as e:
-        print(f"Error loading data: {e}")
-    return {"players": {}}
-
-def save_data(data):
-    """Сохраняем данные игроков"""
-    try:
-        with open(DATA_FILE, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-        return True
-    except Exception as e:
-        print(f"Error saving data: {e}")
-        return False
+# Упрощенное хранение данных в памяти (без файлов)
+game_data = {"players": {}}
 
 # CORS headers для всех ответов
 @app.after_request
@@ -55,9 +34,9 @@ def health_check():
 @app.route('/api/player/<user_id>', methods=['GET'])
 def get_player_data(user_id):
     try:
-        data = load_data()
+        print(f"📥 Getting data for user: {user_id}")
         
-        if user_id not in data["players"]:
+        if user_id not in game_data["players"]:
             # Создаем нового игрока
             player_data = {
                 "credits": 100,
@@ -70,11 +49,12 @@ def get_player_data(user_id):
                 "total_earned": 0,
                 "created_at": datetime.now().isoformat()
             }
-            data["players"][user_id] = player_data
-            save_data(data)
+            game_data["players"][user_id] = player_data
+            print(f"✅ Created new player: {user_id}")
         
-        return jsonify(data["players"][user_id])
+        return jsonify(game_data["players"][user_id])
     except Exception as e:
+        print(f"❌ Error in get_player_data: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 # API для добычи ресурсов
@@ -82,18 +62,17 @@ def get_player_data(user_id):
 def mine_resources():
     try:
         user_id = request.json.get('user_id')
+        print(f"⛏ Mining request from user: {user_id}")
+        
         if not user_id:
             return jsonify({"error": "User ID required"}), 400
             
-        data = load_data()
-        
-        if user_id not in data["players"]:
+        if user_id not in game_data["players"]:
             return jsonify({"error": "Player not found"}), 404
         
-        player = data["players"][user_id]
+        player = game_data["players"][user_id]
         
         # Логика добычи ресурсов
-        import random
         resources_mined = {
             "iron": random.randint(5, 15),
             "gold": random.randint(1, 5),
@@ -105,7 +84,8 @@ def mine_resources():
             player["resources"][resource] += amount
         
         player["last_action"] = datetime.now().isoformat()
-        save_data(data)
+        
+        print(f"✅ Mined resources: {resources_mined}")
         
         return jsonify({
             "success": True,
@@ -114,6 +94,7 @@ def mine_resources():
         })
         
     except Exception as e:
+        print(f"❌ Error in mine_resources: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 # API для продажи ресурсов
@@ -123,15 +104,15 @@ def sell_resources():
         user_id = request.json.get('user_id')
         resource_type = request.json.get('resource_type')
         
+        print(f"🛒 Sell request: {user_id} wants to sell {resource_type}")
+        
         if not user_id or not resource_type:
             return jsonify({"error": "Missing parameters"}), 400
             
-        data = load_data()
-        
-        if user_id not in data["players"]:
+        if user_id not in game_data["players"]:
             return jsonify({"error": "Player not found"}), 404
             
-        player = data["players"][user_id]
+        player = game_data["players"][user_id]
         
         # Цены на ресурсы
         prices = {
@@ -159,7 +140,7 @@ def sell_resources():
         player["resources"][resource_type] = 0
         player["total_earned"] += income
         
-        save_data(data)
+        print(f"✅ Sold {amount} {resource_type} for {income} credits")
         
         return jsonify({
             "success": True,
@@ -169,6 +150,7 @@ def sell_resources():
         })
         
     except Exception as e:
+        print(f"❌ Error in sell_resources: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 # API для улучшения корабля
@@ -176,12 +158,12 @@ def sell_resources():
 def upgrade_ship():
     try:
         user_id = request.json.get('user_id')
-        data = load_data()
+        print(f"🛠 Upgrade request from: {user_id}")
         
-        if user_id not in data["players"]:
+        if user_id not in game_data["players"]:
             return jsonify({"error": "Player not found"}), 404
             
-        player = data["players"][user_id]
+        player = game_data["players"][user_id]
         
         # Стоимость улучшения = текущий_уровень * 100
         upgrade_cost = player["ship_level"] * 100
@@ -196,7 +178,7 @@ def upgrade_ship():
         player["credits"] -= upgrade_cost
         player["ship_level"] += 1
         
-        save_data(data)
+        print(f"✅ Ship upgraded to level {player['ship_level']}")
         
         return jsonify({
             "success": True,
@@ -206,6 +188,7 @@ def upgrade_ship():
         })
         
     except Exception as e:
+        print(f"❌ Error in upgrade_ship: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 # Обработчики ошибок
