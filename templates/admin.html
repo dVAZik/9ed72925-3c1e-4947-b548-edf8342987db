@@ -22,6 +22,7 @@
             --positive: #00ff88;
             --negative: #ff4444;
             --warning: #ffaa00;
+            --info: #0088ff;
         }
         
         body {
@@ -146,6 +147,15 @@
             color: var(--text-accent);
         }
         
+        .section-subtitle {
+            font-size: 1.1em;
+            font-weight: 500;
+            margin-bottom: 12px;
+            color: var(--text-secondary);
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 8px;
+        }
+        
         .players-grid {
             display: grid;
             gap: 10px;
@@ -179,6 +189,7 @@
         .player-actions {
             display: flex;
             gap: 8px;
+            flex-wrap: wrap;
         }
         
         .btn {
@@ -188,6 +199,7 @@
             cursor: pointer;
             font-weight: 500;
             transition: all 0.2s;
+            font-size: 0.9em;
         }
         
         .btn-primary {
@@ -205,10 +217,20 @@
             color: #fff;
         }
         
+        .btn-info {
+            background: var(--info);
+            color: #fff;
+        }
+        
         .btn-secondary {
             background: var(--bg-tertiary);
             color: var(--text-primary);
             border: 1px solid var(--border);
+        }
+        
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.8em;
         }
         
         .btn:hover {
@@ -223,6 +245,8 @@
             display: block;
             margin-bottom: 5px;
             font-weight: 500;
+            color: var(--text-secondary);
+            font-size: 0.9em;
         }
         
         .input-field {
@@ -232,6 +256,13 @@
             border: 1px solid var(--border);
             border-radius: 6px;
             color: var(--text-primary);
+            font-size: 0.9em;
+        }
+        
+        .input-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
         }
         
         .actions-grid {
@@ -239,6 +270,26 @@
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 10px;
             margin-top: 15px;
+        }
+        
+        .advanced-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .action-card {
+            background: var(--bg-tertiary);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        
+        .action-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--text-accent);
         }
         
         .notification {
@@ -252,6 +303,7 @@
             border: 1px solid var(--border);
             z-index: 1000;
             display: none;
+            max-width: 400px;
         }
         
         .notification.success {
@@ -260,6 +312,10 @@
         
         .notification.error {
             border-color: var(--negative);
+        }
+        
+        .notification.info {
+            border-color: var(--info);
         }
         
         .compact-number {
@@ -319,13 +375,67 @@
             font-weight: 600;
             margin-right: 10px;
         }
+        
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .tab-btn {
+            padding: 10px 20px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .tab-btn.active {
+            background: var(--bg-secondary);
+            border-color: var(--text-accent);
+            color: var(--text-accent);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .json-viewer {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 15px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+            font-size: 0.8em;
+            white-space: pre-wrap;
+        }
+        
+        .stats-section {
+            margin-bottom: 20px;
+        }
+        
+        .stats-grid-small {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <div class="logo">🔐 Crypto Exchange Admin Panel</div>
-            <div class="subtitle">System Management & Player Monitoring</div>
+            <div class="logo">🔐 Advanced Admin Panel</div>
+            <div class="subtitle">Complete System Management & Player Control</div>
         </div>
         
         <!-- Navigation -->
@@ -345,62 +455,165 @@
         </div>
         
         <div class="admin-section" id="adminSection">
-            <!-- System Stats -->
-            <div class="section">
-                <div class="section-title">📊 System Overview</div>
-                <div class="stats-grid" id="systemStats">
-                    <div class="stat-card">
-                        <div class="stat-value" id="totalPlayers">0</div>
-                        <div class="stat-label">Total Players</div>
+            <!-- Tab Navigation -->
+            <div class="tab-buttons">
+                <button class="tab-btn active" onclick="showTab('overview')">📊 Overview</button>
+                <button class="tab-btn" onclick="showTab('players')">👥 Players</button>
+                <button class="tab-btn" onclick="showTab('bulkActions')">⚡ Bulk Actions</button>
+                <button class="tab-btn" onclick="showTab('system')">🔧 System Tools</button>
+                <button class="tab-btn" onclick="showTab('advanced')">🚀 Advanced</button>
+            </div>
+            
+            <!-- Overview Tab -->
+            <div class="tab-content active" id="overviewTab">
+                <div class="section">
+                    <div class="section-title">📊 System Overview</div>
+                    <div class="stats-grid" id="systemStats">
+                        <div class="stat-card">
+                            <div class="stat-value" id="totalPlayers">0</div>
+                            <div class="stat-label">Total Players</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value compact-number" id="totalBalance">$0</div>
+                            <div class="stat-label">Total Balance</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value compact-number" id="totalPortfolio">$0</div>
+                            <div class="stat-label">Portfolio Value</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value compact-number" id="totalWealth">$0</div>
+                            <div class="stat-label">Total Wealth</div>
+                        </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-value compact-number" id="totalBalance">$0</div>
-                        <div class="stat-label">Total Balance</div>
+                    
+                    <!-- Crypto Statistics -->
+                    <div class="section-title">💰 Crypto Statistics</div>
+                    <div class="crypto-stats" id="cryptoStats">
+                        <!-- Will be populated by JavaScript -->
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-value compact-number" id="totalPortfolio">$0</div>
-                        <div class="stat-label">Portfolio Value</div>
+                    
+                    <!-- Top Players -->
+                    <div class="section-title">🏆 Top 10 Players</div>
+                    <div class="top-players" id="topPlayers">
+                        <!-- Will be populated by JavaScript -->
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-value compact-number" id="totalWealth">$0</div>
-                        <div class="stat-label">Total Wealth</div>
+                    
+                    <div class="section-title">⚡ Quick Actions</div>
+                    <div class="actions-grid">
+                        <button class="btn btn-primary" onclick="systemAction('save')">💾 Save Data</button>
+                        <button class="btn btn-secondary" onclick="systemAction('reload')">🔄 Reload Data</button>
+                        <button class="btn btn-warning" onclick="systemAction('update_prices_all')">📈 Update All Prices</button>
+                        <button class="btn btn-info" onclick="loadDetailedStats()">📋 Detailed Stats</button>
                     </div>
                 </div>
                 
-                <!-- Crypto Statistics -->
-                <div class="section-title">💰 Crypto Statistics</div>
-                <div class="crypto-stats" id="cryptoStats">
-                    <!-- Will be populated by JavaScript -->
-                </div>
-                
-                <!-- Top Players -->
-                <div class="section-title">🏆 Top 10 Players</div>
-                <div class="top-players" id="topPlayers">
-                    <!-- Will be populated by JavaScript -->
-                </div>
-                
-                <div class="section-title">⚡ System Actions</div>
-                <div class="actions-grid">
-                    <button class="btn btn-primary" onclick="systemAction('save')">💾 Save Data</button>
-                    <button class="btn btn-secondary" onclick="systemAction('reload')">🔄 Reload Data</button>
-                    <button class="btn btn-warning" onclick="systemAction('update_prices_all')">📈 Update All Prices</button>
-                    <button class="btn btn-secondary" onclick="loadStats()">🔄 Refresh Stats</button>
+                <!-- Detailed Stats Section -->
+                <div class="section" id="detailedStatsSection" style="display: none;">
+                    <div class="section-title">📈 Detailed Statistics</div>
+                    <div id="detailedStatsContent"></div>
                 </div>
             </div>
             
-            <!-- Players Management -->
-            <div class="section">
-                <div class="section-title">👥 Players Management</div>
-                <div class="players-grid" id="playersList">
-                    <div class="loading">Loading players...</div>
+            <!-- Players Tab -->
+            <div class="tab-content" id="playersTab">
+                <div class="section">
+                    <div class="section-title">👥 Players Management</div>
+                    <div class="players-grid" id="playersList">
+                        <div class="loading">Loading players...</div>
+                    </div>
+                </div>
+                
+                <!-- Player Details Modal -->
+                <div class="section" id="playerDetails" style="display: none;">
+                    <div class="section-title">👤 Player Details - <span id="playerDetailsTitle"></span></div>
+                    <div id="playerDetailsContent"></div>
+                    <button class="btn btn-secondary" onclick="hidePlayerDetails()">← Back to Players</button>
                 </div>
             </div>
             
-            <!-- Player Details Modal -->
-            <div class="section" id="playerDetails" style="display: none;">
-                <div class="section-title">👤 Player Details</div>
-                <div id="playerDetailsContent"></div>
-                <button class="btn btn-secondary" onclick="hidePlayerDetails()">← Back to Players</button>
+            <!-- Bulk Actions Tab -->
+            <div class="tab-content" id="bulkActionsTab">
+                <div class="section">
+                    <div class="section-title">⚡ Bulk Player Actions</div>
+                    
+                    <div class="section-subtitle">💰 Balance Management</div>
+                    <div class="advanced-actions">
+                        <div class="action-card">
+                            <div class="action-title">Add Balance to All</div>
+                            <div class="input-group">
+                                <label class="input-label">Amount ($)</label>
+                                <input type="number" class="input-field" id="bulkAddBalanceAmount" placeholder="1000">
+                            </div>
+                            <button class="btn btn-primary" onclick="bulkAction('add_balance_all')">Add to All Players</button>
+                        </div>
+                        
+                        <div class="action-card">
+                            <div class="action-title">Multiply All Balances</div>
+                            <div class="input-group">
+                                <label class="input-label">Multiplier</label>
+                                <input type="number" class="input-field" id="bulkMultiplyBalance" placeholder="2" step="0.1">
+                            </div>
+                            <button class="btn btn-warning" onclick="bulkAction('multiply_balance_all')">Multiply All</button>
+                        </div>
+                    </div>
+                    
+                    <div class="section-subtitle">🔄 System Actions</div>
+                    <div class="advanced-actions">
+                        <div class="action-card">
+                            <div class="action-title">Reset All Players</div>
+                            <p style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 10px;">
+                                Reset all players to initial state (balance: $10,000)
+                            </p>
+                            <button class="btn btn-danger" onclick="bulkAction('reset_all_players')">Reset All Players</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- System Tools Tab -->
+            <div class="tab-content" id="systemToolsTab">
+                <div class="section">
+                    <div class="section-title">🔧 System Tools</div>
+                    
+                    <div class="section-subtitle">🔄 Data Management</div>
+                    <div class="advanced-actions">
+                        <div class="action-card">
+                            <div class="action-title">Export All Data</div>
+                            <p style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 10px;">
+                                Export complete system data including players and P2P orders
+                            </p>
+                            <button class="btn btn-info" onclick="systemAdvancedAction('export_data')">Export Data</button>
+                        </div>
+                        
+                        <div class="action-card">
+                            <div class="action-title">Clear P2P Orders</div>
+                            <p style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 10px;">
+                                Remove all P2P trading orders from the system
+                            </p>
+                            <button class="btn btn-danger" onclick="systemAdvancedAction('clear_p2p_orders')">Clear All Orders</button>
+                        </div>
+                    </div>
+                    
+                    <div class="section-subtitle">📊 Advanced Statistics</div>
+                    <div class="action-card">
+                        <div class="action-title">Get Detailed Analytics</div>
+                        <p style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 10px;">
+                            Comprehensive system analytics including wealth distribution and asset statistics
+                        </p>
+                        <button class="btn btn-primary" onclick="systemAdvancedAction('get_detailed_stats')">Get Detailed Stats</button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Advanced Tab -->
+            <div class="tab-content" id="advancedTab">
+                <div class="section">
+                    <div class="section-title">🚀 Advanced Features</div>
+                    <div id="advancedContent">
+                        <div class="loading">Advanced features will be displayed here</div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -409,6 +622,7 @@
 
     <script>
         let adminPassword = '';
+        let currentTab = 'overview';
         
         // Расширенная функция форматирования чисел
         function formatNumber(num, decimals = 2) {
@@ -455,7 +669,28 @@
             notification.textContent = message;
             notification.className = `notification ${type}`;
             notification.style.display = 'block';
-            setTimeout(() => notification.style.display = 'none', 3000);
+            setTimeout(() => notification.style.display = 'none', 5000);
+        }
+        
+        // Управление табами
+        function showTab(tabName) {
+            // Скрыть все табы
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            // Показать выбранный таб
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            event.target.classList.add('active');
+            currentTab = tabName;
+            
+            // Загрузить данные для таба если нужно
+            if (tabName === 'players') {
+                loadPlayers();
+            }
         }
         
         // Аутентификация
@@ -519,6 +754,91 @@
             } catch (error) {
                 showNotification('Failed to load stats: ' + error.message, 'error');
             }
+        }
+        
+        // Подробная статистика
+        async function loadDetailedStats() {
+            try {
+                const response = await fetch('/api/admin/system/advanced', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: adminPassword, action: 'get_detailed_stats' })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    displayDetailedStats(result.stats);
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Failed to load detailed stats: ' + error.message, 'error');
+            }
+        }
+        
+        function displayDetailedStats(stats) {
+            const content = document.getElementById('detailedStatsContent');
+            const section = document.getElementById('detailedStatsSection');
+            
+            let html = `
+                <div class="stats-section">
+                    <div class="section-subtitle">📊 Basic Statistics</div>
+                    <div class="stats-grid-small">
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.basic.total_players}</div>
+                            <div class="stat-label">Total Players</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value compact-number">${formatCurrency(stats.basic.average_balance)}</div>
+                            <div class="stat-label">Avg Balance</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value compact-number">${formatCurrency(stats.basic.average_wealth)}</div>
+                            <div class="stat-label">Avg Wealth</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="stats-section">
+                    <div class="section-subtitle">💰 Wealth Distribution</div>
+                    <div class="stats-grid-small">
+                        <div class="stat-card">
+                            <div class="stat-value compact-number">${formatCurrency(stats.wealth_distribution.richest_player)}</div>
+                            <div class="stat-label">Richest</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value compact-number">${formatCurrency(stats.wealth_distribution.poorest_player)}</div>
+                            <div class="stat-label">Poorest</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value compact-number">${formatCurrency(stats.wealth_distribution.median_wealth)}</div>
+                            <div class="stat-label">Median</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="stats-section">
+                    <div class="section-subtitle">📈 P2P Statistics</div>
+                    <div class="stats-grid-small">
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.p2p_stats.total_orders}</div>
+                            <div class="stat-label">Total Orders</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.p2p_stats.active_orders}</div>
+                            <div class="stat-label">Active</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.p2p_stats.filled_orders}</div>
+                            <div class="stat-label">Filled</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            content.innerHTML = html;
+            section.style.display = 'block';
         }
         
         // Обновление статистики по криптовалютам
@@ -602,8 +922,11 @@
                                 </div>
                             </div>
                             <div class="player-actions">
-                                <button class="btn btn-primary" onclick="viewPlayer('${player.user_id}')">View</button>
-                                <button class="btn btn-warning" onclick="resetPlayer('${player.user_id}')">Reset</button>
+                                <button class="btn btn-primary btn-small" onclick="viewPlayer('${player.user_id}')">View</button>
+                                <button class="btn btn-info btn-small" onclick="manageBalance('${player.user_id}')">Balance</button>
+                                <button class="btn btn-warning btn-small" onclick="managePortfolio('${player.user_id}')">Portfolio</button>
+                                <button class="btn btn-secondary btn-small" onclick="managePrices('${player.user_id}')">Prices</button>
+                                <button class="btn btn-danger btn-small" onclick="resetPlayer('${player.user_id}')">Reset</button>
                             </div>
                         `;
                         
@@ -631,6 +954,9 @@
                 if (result.success) {
                     const player = result.player;
                     const content = document.getElementById('playerDetailsContent');
+                    const title = document.getElementById('playerDetailsTitle');
+                    
+                    title.textContent = player.username || userId;
                     
                     let portfolioHtml = '';
                     for (const [symbol, amount] of Object.entries(player.portfolio)) {
@@ -650,23 +976,17 @@
                             <div class="player-stats">Last Login: ${new Date(player.last_login).toLocaleString()}</div>
                         </div>
                         
-                        <div class="section-title">Portfolio</div>
+                        <div class="section-subtitle">Portfolio</div>
                         <div style="margin-bottom: 20px;">
                             ${portfolioHtml || '<div>No assets in portfolio</div>'}
                         </div>
                         
-                        <div class="section-title">Manage Balance</div>
-                        <div class="input-group">
-                            <label class="input-label">Add Balance Amount ($)</label>
-                            <input type="number" class="input-field" id="addBalanceAmount" placeholder="1000">
+                        <div class="section-subtitle">Quick Actions</div>
+                        <div class="player-actions">
+                            <button class="btn btn-info" onclick="manageBalance('${userId}')">Manage Balance</button>
+                            <button class="btn btn-warning" onclick="managePortfolio('${userId}')">Manage Portfolio</button>
+                            <button class="btn btn-secondary" onclick="managePrices('${userId}')">Manage Prices</button>
                         </div>
-                        <button class="btn btn-primary" onclick="addBalance('${userId}')">Add Balance</button>
-                        
-                        <div class="input-group">
-                            <label class="input-label">Set Balance Amount ($)</label>
-                            <input type="number" class="input-field" id="setBalanceAmount" placeholder="10000">
-                        </div>
-                        <button class="btn btn-warning" onclick="setBalance('${userId}')">Set Balance</button>
                     `;
                     
                     document.getElementById('playersList').style.display = 'none';
@@ -679,13 +999,249 @@
             }
         }
         
+        // Управление балансом
+        async function manageBalance(userId) {
+            const content = document.getElementById('playerDetailsContent');
+            const title = document.getElementById('playerDetailsTitle');
+            
+            title.textContent = `Balance Management - ${userId.substring(0, 8)}...`;
+            
+            content.innerHTML = `
+                <div class="input-group">
+                    <label class="input-label">Add Balance Amount ($)</label>
+                    <input type="number" class="input-field" id="addBalanceAmount" placeholder="1000">
+                </div>
+                <button class="btn btn-primary" onclick="balanceAction('${userId}', 'add')">Add Balance</button>
+                
+                <div class="input-group">
+                    <label class="input-label">Set Balance Amount ($)</label>
+                    <input type="number" class="input-field" id="setBalanceAmount" placeholder="10000">
+                </div>
+                <button class="btn btn-warning" onclick="balanceAction('${userId}', 'set')">Set Balance</button>
+                
+                <div class="input-group">
+                    <label class="input-label">Multiply Balance By</label>
+                    <input type="number" class="input-field" id="multiplyBalance" placeholder="2" step="0.1">
+                </div>
+                <button class="btn btn-info" onclick="balanceAction('${userId}', 'multiply')">Multiply Balance</button>
+            `;
+            
+            document.getElementById('playersList').style.display = 'none';
+            document.getElementById('playerDetails').style.display = 'block';
+        }
+        
+        // Управление портфелем
+        async function managePortfolio(userId) {
+            const content = document.getElementById('playerDetailsContent');
+            const title = document.getElementById('playerDetailsTitle');
+            
+            title.textContent = `Portfolio Management - ${userId.substring(0, 8)}...`;
+            
+            let cryptoOptions = '';
+            for (const [symbol, crypto] of Object.entries({
+                "BTC": {name: "Bitcoin"}, "ETH": {name: "Ethereum"}, "BNB": {name: "Binance Coin"},
+                "XRP": {name: "Ripple"}, "ADA": {name: "Cardano"}, "DOGE": {name: "Dogecoin"},
+                "SOL": {name: "Solana"}, "DOT": {name: "Polkadot"}
+            })) {
+                cryptoOptions += `<option value="${symbol}">${symbol} - ${crypto.name}</option>`;
+            }
+            
+            content.innerHTML = `
+                <div class="input-row">
+                    <div class="input-group">
+                        <label class="input-label">Cryptocurrency</label>
+                        <select class="input-field" id="portfolioSymbol">
+                            ${cryptoOptions}
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Amount</label>
+                        <input type="number" class="input-field" id="portfolioAmount" placeholder="1.0" step="0.001">
+                    </div>
+                </div>
+                
+                <div class="player-actions">
+                    <button class="btn btn-primary" onclick="portfolioAction('${userId}', 'add')">Add to Portfolio</button>
+                    <button class="btn btn-warning" onclick="portfolioAction('${userId}', 'set')">Set in Portfolio</button>
+                    <button class="btn btn-danger" onclick="portfolioAction('${userId}', 'remove')">Remove from Portfolio</button>
+                </div>
+            `;
+            
+            document.getElementById('playersList').style.display = 'none';
+            document.getElementById('playerDetails').style.display = 'block';
+        }
+        
+        // Управление ценами
+        async function managePrices(userId) {
+            const content = document.getElementById('playerDetailsContent');
+            const title = document.getElementById('playerDetailsTitle');
+            
+            title.textContent = `Price Management - ${userId.substring(0, 8)}...`;
+            
+            let cryptoOptions = '<option value="">All Cryptocurrencies</option>';
+            for (const [symbol, crypto] of Object.entries({
+                "BTC": {name: "Bitcoin"}, "ETH": {name: "Ethereum"}, "BNB": {name: "Binance Coin"},
+                "XRP": {name: "Ripple"}, "ADA": {name: "Cardano"}, "DOGE": {name: "Dogecoin"},
+                "SOL": {name: "Solana"}, "DOT": {name: "Polkadot"}
+            })) {
+                cryptoOptions += `<option value="${symbol}">${symbol} - ${crypto.name}</option>`;
+            }
+            
+            content.innerHTML = `
+                <div class="input-row">
+                    <div class="input-group">
+                        <label class="input-label">Cryptocurrency</label>
+                        <select class="input-field" id="priceSymbol">
+                            ${cryptoOptions}
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label class="input-label">Price ($)</label>
+                        <input type="number" class="input-field" id="priceValue" placeholder="1000" step="0.01">
+                    </div>
+                </div>
+                
+                <button class="btn btn-warning" onclick="priceAction('${userId}', 'set_price')">Set Price</button>
+                
+                <div class="input-group">
+                    <label class="input-label">Multiply Prices By</label>
+                    <input type="number" class="input-field" id="priceMultiplier" placeholder="2" step="0.1">
+                </div>
+                
+                <div class="player-actions">
+                    <button class="btn btn-info" onclick="priceAction('${userId}', 'multiply_prices')">Multiply Prices</button>
+                    <button class="btn btn-secondary" onclick="priceAction('${userId}', 'reset_prices')">Reset to Base Prices</button>
+                </div>
+            `;
+            
+            document.getElementById('playersList').style.display = 'none';
+            document.getElementById('playerDetails').style.display = 'block';
+        }
+        
         function hidePlayerDetails() {
             document.getElementById('playerDetails').style.display = 'none';
             document.getElementById('playersList').style.display = 'grid';
             loadPlayers();
         }
         
-        // Действия с игроком
+        // Действия с балансом
+        async function balanceAction(userId, action) {
+            let amount;
+            if (action === 'multiply') {
+                amount = parseFloat(document.getElementById('multiplyBalance').value);
+            } else if (action === 'set') {
+                amount = parseFloat(document.getElementById('setBalanceAmount').value);
+            } else {
+                amount = parseFloat(document.getElementById('addBalanceAmount').value);
+            }
+            
+            if (!amount || (action !== 'multiply' && amount < 0)) {
+                showNotification('Please enter valid amount', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/admin/player/${userId}/balance`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: adminPassword, action, amount })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification(result.message);
+                    viewPlayer(userId);
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Failed to update balance: ' + error.message, 'error');
+            }
+        }
+        
+        // Действия с портфелем
+        async function portfolioAction(userId, action) {
+            const symbol = document.getElementById('portfolioSymbol').value;
+            const amount = parseFloat(document.getElementById('portfolioAmount').value);
+            
+            if (!symbol) {
+                showNotification('Please select cryptocurrency', 'error');
+                return;
+            }
+            
+            if (!amount || amount < 0) {
+                showNotification('Please enter valid amount', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/admin/player/${userId}/portfolio`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: adminPassword, action, symbol, amount })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification(result.message);
+                    viewPlayer(userId);
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Failed to update portfolio: ' + error.message, 'error');
+            }
+        }
+        
+        // Действия с ценами
+        async function priceAction(userId, action) {
+            const symbol = document.getElementById('priceSymbol').value;
+            
+            let data = { password: adminPassword, action };
+            
+            if (action === 'set_price') {
+                const price = parseFloat(document.getElementById('priceValue').value);
+                if (!price || price < 0) {
+                    showNotification('Please enter valid price', 'error');
+                    return;
+                }
+                data.symbol = symbol;
+                data.price = price;
+            } else if (action === 'multiply_prices') {
+                const multiplier = parseFloat(document.getElementById('priceMultiplier').value);
+                if (!multiplier || multiplier <= 0) {
+                    showNotification('Please enter valid multiplier', 'error');
+                    return;
+                }
+                data.multiplier = multiplier;
+                if (symbol) data.symbol = symbol;
+            }
+            
+            try {
+                const response = await fetch(`/api/admin/player/${userId}/prices`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification(result.message);
+                    if (action !== 'reset_prices') {
+                        viewPlayer(userId);
+                    }
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Failed to update prices: ' + error.message, 'error');
+            }
+        }
+        
+        // Сброс игрока
         async function resetPlayer(userId) {
             if (confirm(`Are you sure you want to reset player ${userId}?`)) {
                 try {
@@ -709,57 +1265,46 @@
             }
         }
         
-        async function addBalance(userId) {
-            const amount = parseFloat(document.getElementById('addBalanceAmount').value);
-            if (!amount || amount <= 0) {
-                showNotification('Please enter valid amount', 'error');
+        // Массовые действия
+        async function bulkAction(action) {
+            let amount;
+            
+            if (action === 'add_balance_all') {
+                amount = parseFloat(document.getElementById('bulkAddBalanceAmount').value);
+                if (!amount || amount < 0) {
+                    showNotification('Please enter valid amount', 'error');
+                    return;
+                }
+            } else if (action === 'multiply_balance_all') {
+                amount = parseFloat(document.getElementById('bulkMultiplyBalance').value);
+                if (!amount || amount <= 0) {
+                    showNotification('Please enter valid multiplier', 'error');
+                    return;
+                }
+            }
+            
+            if (action === 'reset_all_players' && !confirm('Are you sure you want to reset ALL players? This cannot be undone!')) {
                 return;
             }
             
             try {
-                const response = await fetch(`/api/admin/player/${userId}`, {
+                const response = await fetch('/api/admin/bulk_actions', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: adminPassword, action: 'add_balance', amount })
+                    body: JSON.stringify({ password: adminPassword, action, amount, multiplier: amount })
                 });
                 
                 const result = await response.json();
                 
                 if (result.success) {
                     showNotification(result.message);
-                    viewPlayer(userId); // Обновляем данные игрока
+                    loadStats();
+                    loadPlayers();
                 } else {
                     showNotification(result.error, 'error');
                 }
             } catch (error) {
-                showNotification('Failed to add balance: ' + error.message, 'error');
-            }
-        }
-        
-        async function setBalance(userId) {
-            const amount = parseFloat(document.getElementById('setBalanceAmount').value);
-            if (!amount || amount < 0) {
-                showNotification('Please enter valid amount', 'error');
-                return;
-            }
-            
-            try {
-                const response = await fetch(`/api/admin/player/${userId}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: adminPassword, action: 'set_balance', amount })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    showNotification(result.message);
-                    viewPlayer(userId); // Обновляем данные игрока
-                } else {
-                    showNotification(result.error, 'error');
-                }
-            } catch (error) {
-                showNotification('Failed to set balance: ' + error.message, 'error');
+                showNotification('Bulk action failed: ' + error.message, 'error');
             }
         }
         
@@ -788,9 +1333,40 @@
             }
         }
         
+        // Расширенные системные действия
+        async function systemAdvancedAction(action) {
+            try {
+                const response = await fetch('/api/admin/system/advanced', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: adminPassword, action })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    if (action === 'export_data') {
+                        // Показать экспортированные данные
+                        const advancedContent = document.getElementById('advancedContent');
+                        advancedContent.innerHTML = `<div class="json-viewer">${JSON.stringify(result.data, null, 2)}</div>`;
+                        showTab('advanced');
+                    } else if (action === 'get_detailed_stats') {
+                        displayDetailedStats(result.stats);
+                        showTab('overview');
+                    } else {
+                        showNotification(result.message);
+                    }
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Advanced action failed: ' + error.message, 'error');
+            }
+        }
+        
         // Автообновление статистики каждые 30 секунд
         setInterval(() => {
-            if (adminPassword) {
+            if (adminPassword && currentTab === 'overview') {
                 loadStats();
             }
         }, 30000);
