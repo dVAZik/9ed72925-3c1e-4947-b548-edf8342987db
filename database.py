@@ -13,8 +13,10 @@ class Database:
             if os.path.exists(self.data_file):
                 with open(self.data_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
-                    print(f"✅ Loaded {len(data)} players from file")
-                    return data
+                    # Фильтруем только реальных пользователей (не начинающихся с 'trader_')
+                    real_players = {k: v for k, v in data.items() if not k.startswith('trader_')}
+                    print(f"✅ Loaded {len(real_players)} real players from file")
+                    return real_players
         except Exception as e:
             print(f"❌ Error loading data: {e}")
         return {}
@@ -22,25 +24,33 @@ class Database:
     def save_data(self):
         """Сохранение данных в файл"""
         try:
+            # Сохраняем только реальных пользователей
+            real_players = {k: v for k, v in self.players.items() if not k.startswith('trader_')}
             with open(self.data_file, 'w', encoding='utf-8') as f:
-                json.dump(self.players, f, indent=2, ensure_ascii=False)
-            print(f"💾 Data saved: {len(self.players)} players")
+                json.dump(real_players, f, indent=2, ensure_ascii=False)
+            print(f"💾 Real players saved: {len(real_players)} players")
         except Exception as e:
             print(f"❌ Error saving data: {e}")
     
     def get_player(self, user_id):
         """Получить игрока по ID"""
+        # Для тестовых пользователей не сохраняем в базу
+        if user_id.startswith('trader_'):
+            return None
         return self.players.get(user_id)
     
     def create_player(self, user_id, player_data):
         """Создать нового игрока"""
-        self.players[user_id] = player_data
-        self.save_data()
+        # Сохраняем только реальных пользователей
+        if not user_id.startswith('trader_'):
+            self.players[user_id] = player_data
+            self.save_data()
         return player_data
     
     def update_player(self, user_id, player_data):
         """Обновить данные игрока"""
-        if user_id in self.players:
+        # Обновляем только реальных пользователей
+        if not user_id.startswith('trader_') and user_id in self.players:
             # Сохраняем некоторые старые данные если они нужны
             old_player = self.players[user_id]
             player_data.setdefault('created_at', old_player.get('created_at', datetime.now().isoformat()))
@@ -52,17 +62,22 @@ class Database:
     
     def save_player(self, user_id, player_data):
         """Сохранить или обновить игрока"""
+        if user_id.startswith('trader_'):
+            return player_data  # Не сохраняем тестовых пользователей
+            
         if user_id in self.players:
             return self.update_player(user_id, player_data)
         else:
             return self.create_player(user_id, player_data)
     
     def get_all_players(self):
-        """Получить всех игроков"""
-        return self.players
+        """Получить всех реальных игроков"""
+        return {k: v for k, v in self.players.items() if not k.startswith('trader_')}
     
     def get_player_data(self, user_id):
         """Получить данные игрока в формате словаря"""
+        if user_id.startswith('trader_'):
+            return None  # Тестовые пользователи не хранятся в базе
         return self.players.get(user_id)
 
 # Глобальный экземпляр базы данных
