@@ -10,7 +10,6 @@ import time
 
 app = Flask(__name__)
 port = int(os.environ.get("PORT", 5000))
-
 # Файл для хранения данных
 DATA_FILE = "game_data.json"
 
@@ -25,7 +24,7 @@ def load_game_data():
     except Exception as e:
         print(f"❌ Error loading data: {e}")
     print("🆕 Starting with fresh game data")
-    return {"players": {}, "last_save": datetime.now().isoformat()}
+    return {"players": {}, "last_save": datetime.now().isoformat(), "system_stats": {}}
 
 # Сохранение данных в файл
 def save_game_data():
@@ -46,6 +45,65 @@ atexit.register(save_on_exit)
 
 # Загружаем данные при старте
 game_data = load_game_data()
+
+# Обновляем системную статистику
+def update_system_stats():
+    players = game_data.get("players", {})
+    total_players = len(players)
+    
+    if total_players > 0:
+        total_balance = sum(player.get('balance', 0) for player in players.values())
+        total_portfolio = sum(player.get('portfolio_value', 0) for player in players.values())
+        total_wealth = total_balance + total_portfolio
+        
+        # Топ игроков по балансу
+        top_players = sorted(
+            [(user_id, player) for user_id, player in players.items()],
+            key=lambda x: x[1].get('total_value', 0),
+            reverse=True
+        )[:5]
+        
+        # Статистика по криптовалютам
+        crypto_stats = {}
+        for symbol in CRYPTOS.keys():
+            total_owned = sum(player.get('portfolio', {}).get(symbol, 0) for player in players.values())
+            crypto_stats[symbol] = {
+                'total_owned': total_owned,
+                'players_owning': sum(1 for player in players.values() if player.get('portfolio', {}).get(symbol, 0) > 0)
+            }
+        
+        game_data["system_stats"] = {
+            "total_players": total_players,
+            "total_balance": total_balance,
+            "total_portfolio_value": total_portfolio,
+            "total_wealth": total_wealth,
+            "average_balance": total_balance / total_players if total_players > 0 else 0,
+            "top_players": [
+                {
+                    "user_id": user_id,
+                    "username": player.get('username', user_id),
+                    "total_value": player.get('total_value', 0),
+                    "balance": player.get('balance', 0)
+                }
+                for user_id, player in top_players
+            ],
+            "crypto_stats": crypto_stats,
+            "last_updated": datetime.now().isoformat()
+        }
+    else:
+        game_data["system_stats"] = {
+            "total_players": 0,
+            "total_balance": 0,
+            "total_portfolio_value": 0,
+            "total_wealth": 0,
+            "average_balance": 0,
+            "top_players": [],
+            "crypto_stats": {},
+            "last_updated": datetime.now().isoformat()
+        }
+
+# Обновляем статистику при старте
+update_system_stats()
 
 # Популярные криптовалюты с реалистичными параметрами
 CRYPTOS = {
@@ -204,7 +262,8 @@ def create_new_player_data():
         "current_prices": {},
         "order_books": {},
         "created_at": datetime.now().isoformat(),
-        "last_login": datetime.now().isoformat()
+        "last_login": datetime.now().isoformat(),
+        "username": "Trader"
     }
     
     # Инициализируем цены и стаканы
@@ -235,6 +294,10 @@ def after_request(response):
 def index():
     return render_template('index.html')
 
+@app.route('/admin')
+def admin():
+    return render_template('admin.html')
+
 @app.route('/health')
 def health_check():
     players_count = len(game_data.get("players", {}))
@@ -245,6 +308,161 @@ def health_check():
         "players_count": players_count,
         "last_save": last_save
     })
+
+# Аутентификация для админки
+@app.route('/api/admin/login', methods=['POST'])
+def admin_login():
+    try:
+        password = request.json.get('password')
+        if password == ADMIN_PASSWORD:
+            return jsonify({"success": True, "message": "Login successful"})
+        else:
+            return jsonify({"success": False, "error": "Invalid password"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# Получить системную статистику
+@app.route('/api/admin/stats', methods=['POST'])
+def admin_stats():
+    try:
+        password = request.json.get('password')
+        if password != ADMIN_PASSWORD:
+            return jsonify({"success": False, "error": "Unauthorized"})
+        
+        update_system_stats()
+        return jsonify({
+            "success": True,
+            "stats": game_data["system_stats"],
+            "last_save": game_data.get("last_save", "Never")
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# Получить список всех игроков
+@app.route('/api/admin/players', methods=['POST'])
+def admin_players():
+    try:
+        password = request.json.get('password')
+        if password != ADMIN_PASSWORD:
+            return jsonify({"success": False, "error": "Unauthorized"})
+        
+        players = game_data.get("players", {})
+        players_list = []
+        
+        for user_id, player in players.items():
+            players_list.append({
+                "user_id": user_id,
+                "username": player.get('username', 'Unknown'),
+                "balance": player.get('balance', 0),
+                "portfolio_value": player.get('portfolio_value', 0),
+                "total_value": player.get('total_value', 0),
+                "created_at": player.get('created_at', 'Unknown'),
+                "last_login": player.get('last_login', 'Never'),
+                "orders_count": len(player.get('orders', [])),
+                "portfolio": player.get('portfolio', {})
+            })
+        
+        return jsonify({
+            "success": True,
+            "players": players_list,
+            "total_count": len(players_list)
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# Управление игроком
+@app.route('/api/admin/player/<user_id>', methods=['POST'])
+def admin_player_manage(user_id):
+    try:
+        password = request.json.get('password')
+        if password != ADMIN_PASSWORD:
+            return jsonify({"success": False, "error": "Unauthorized"})
+        
+        action = request.json.get('action')
+        
+        if user_id not in game_data["players"]:
+            return jsonify({"success": False, "error": "Player not found"})
+        
+        player = game_data["players"][user_id]
+        
+        if action == "reset":
+            # Сброс игрока
+            new_data = create_new_player_data()
+            game_data["players"][user_id] = new_data
+            save_game_data()
+            return jsonify({"success": True, "message": f"Player {user_id} reset successfully"})
+        
+        elif action == "add_balance":
+            # Добавить баланс
+            amount = float(request.json.get('amount', 0))
+            player["balance"] += amount
+            player["total_value"] = player["balance"] + player["portfolio_value"]
+            save_game_data()
+            return jsonify({"success": True, "message": f"Added ${amount} to {user_id}"})
+        
+        elif action == "set_balance":
+            # Установить баланс
+            amount = float(request.json.get('amount', 0))
+            player["balance"] = amount
+            player["total_value"] = player["balance"] + player["portfolio_value"]
+            save_game_data()
+            return jsonify({"success": True, "message": f"Set balance to ${amount} for {user_id}"})
+        
+        elif action == "get_info":
+            # Получить информацию об игроке
+            return jsonify({
+                "success": True,
+                "player": player
+            })
+        
+        else:
+            return jsonify({"success": False, "error": "Unknown action"})
+            
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# Системные операции
+@app.route('/api/admin/system', methods=['POST'])
+def admin_system():
+    try:
+        password = request.json.get('password')
+        if password != ADMIN_PASSWORD:
+            return jsonify({"success": False, "error": "Unauthorized"})
+        
+        action = request.json.get('action')
+        
+        if action == "save":
+            save_game_data()
+            return jsonify({"success": True, "message": "Data saved successfully"})
+        
+        elif action == "reload":
+            global game_data
+            game_data = load_game_data()
+            update_system_stats()
+            return jsonify({"success": True, "message": "Data reloaded successfully"})
+        
+        elif action == "update_prices_all":
+            # Обновить цены для всех игроков
+            for user_id, player in game_data["players"].items():
+                for symbol, crypto in CRYPTOS.items():
+                    current_price = player["current_prices"][symbol]
+                    new_price = generate_realistic_price(current_price, crypto["volatility"] * 2, symbol)
+                    
+                    player["current_prices"][symbol] = new_price
+                    player["price_history"][symbol].append(new_price)
+                    if len(player["price_history"][symbol]) > 50:
+                        player["price_history"][symbol].pop(0)
+                    
+                    player["order_books"][symbol] = update_order_book(symbol, new_price)
+            
+            save_game_data()
+            return jsonify({"success": True, "message": "Prices updated for all players"})
+        
+        else:
+            return jsonify({"success": False, "error": "Unknown action"})
+            
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 # Эндпоинт для принудительного сохранения
 @app.route('/api/save', methods=['POST'])
@@ -469,4 +687,6 @@ if __name__ == '__main__':
     print(f"🚀 Starting Crypto Exchange Pro on port {port}")
     print(f"💾 Data will be saved to: {DATA_FILE}")
     print(f"📊 Current players: {len(game_data.get('players', {}))}")
+    print(f"🔐 Admin panel available at: /admin")
+    print(f"🔑 Admin password: {ADMIN_PASSWORD}")
     app.run(host='0.0.0.0', port=port, debug=False)
