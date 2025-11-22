@@ -7,6 +7,9 @@ import os
 import time
 import hashlib
 import functools
+import csv
+import io
+from collections import Counter, defaultdict
 from database import db  # Импортируем базу данных
 
 app = Flask(__name__)
@@ -860,6 +863,7 @@ def admin_system_route():
     else:
         return jsonify({"success": False, "error": "Unknown action"})
 
+# НОВЫЕ ФУНКЦИИ ДЛЯ АДМИН ПАНЕЛИ
 @app.route('/api/admin/system/advanced', methods=['POST'])
 @require_admin_auth
 def admin_system_advanced_route():
@@ -873,14 +877,20 @@ def admin_system_advanced_route():
         return jsonify({"success": True, "message": "Cleared all P2P orders"})
     
     elif action == "export_data":
-        # Экспорт данных (упрощенный)
+        # Полный экспорт данных
         players = db.get_all_players()
+        
         export_data = {
             "players": players,
             "p2p_orders": p2p_manager.orders,
             "exported_at": datetime.now().isoformat(),
             "total_players": len(players),
-            "total_p2p_orders": len(p2p_manager.orders)
+            "total_p2p_orders": len(p2p_manager.orders),
+            "system_info": {
+                "cryptocurrencies": len(CRYPTOS),
+                "admin_user_id": ADMIN_USER_ID,
+                "server_time": datetime.now().isoformat()
+            }
         }
         return jsonify({"success": True, "data": export_data})
     
@@ -895,6 +905,7 @@ def admin_system_advanced_route():
         # Базовая статистика
         total_balance = sum(player['balance'] for player in players.values())
         total_portfolio = sum(player['portfolio_value'] for player in players.values())
+        total_wealth = total_balance + total_portfolio
         
         # Распределение богатства
         wealth_values = [player['total_value'] for player in players.values()]
@@ -926,10 +937,10 @@ def admin_system_advanced_route():
                 "total_players": total_players,
                 "total_balance": total_balance,
                 "total_portfolio_value": total_portfolio,
-                "total_wealth": total_balance + total_portfolio,
+                "total_wealth": total_wealth,
                 "average_balance": total_balance / total_players,
                 "average_portfolio": total_portfolio / total_players,
-                "average_wealth": (total_balance + total_portfolio) / total_players
+                "average_wealth": total_wealth / total_players
             },
             "wealth_distribution": {
                 "richest_player": wealth_values[0] if wealth_values else 0,
@@ -958,6 +969,182 @@ def admin_system_advanced_route():
         }
         
         return jsonify({"success": True, "stats": detailed_stats})
+    
+    elif action == "generate_test_data":
+        # Генерация тестовых данных
+        test_players_count = 10
+        created_count = 0
+        
+        for i in range(test_players_count):
+            user_id = f"test_player_{i+1}"
+            if user_id not in db.get_all_players():
+                player_data = create_new_player_data()
+                # Добавляем случайные активы
+                for symbol in CRYPTOS:
+                    if random.random() > 0.7:  # 30% chance to have asset
+                        player_data["portfolio"][symbol] = round(random.uniform(0.1, 10.0), 4)
+                player_data["username"] = f"TestPlayer{i+1}"
+                db.save_player(user_id, player_data)
+                created_count += 1
+        
+        return jsonify({"success": True, "message": f"Created {created_count} test players"})
+    
+    elif action == "fix_player_data":
+        # Исправление данных игроков
+        players = db.get_all_players()
+        fixed_count = 0
+        
+        for user_id, player in players.items():
+            needs_fix = False
+            
+            # Проверяем обязательные поля
+            if "portfolio" not in player:
+                player["portfolio"] = {symbol: 0 for symbol in CRYPTOS}
+                needs_fix = True
+            
+            if "current_prices" not in player:
+                player["current_prices"] = {}
+                for symbol, crypto in CRYPTOS.items():
+                    player["current_prices"][symbol] = crypto["base_price"] * random.uniform(0.8, 1.2)
+                needs_fix = True
+            
+            if "portfolio_value" not in player:
+                player["portfolio_value"] = 0
+                needs_fix = True
+            
+            if "total_value" not in player:
+                player["total_value"] = player.get("balance", 10000) + player["portfolio_value"]
+                needs_fix = True
+            
+            if needs_fix:
+                db.save_player(user_id, player)
+                fixed_count += 1
+        
+        return jsonify({"success": True, "message": f"Fixed data for {fixed_count} players"})
+    
+    elif action == "get_system_health":
+        # Проверка здоровья системы
+        players = db.get_all_players()
+        total_players = len(players)
+        
+        # Проверяем целостность данных
+        corrupted_players = 0
+        for user_id, player in players.items():
+            if not all(key in player for key in ["balance", "portfolio", "total_value"]):
+                corrupted_players += 1
+        
+        health_status = {
+            "total_players": total_players,
+            "corrupted_players": corrupted_players,
+            "p2p_orders_total": len(p2p_manager.orders),
+            "p2p_orders_active": len([o for o in p2p_manager.orders if o['status'] == 'active']),
+            "database_size": sum(len(str(player)) for player in players.values()),
+            "system_uptime": int(time.time() - app_start_time),
+            "health_score": 100 - (corrupted_players / max(1, total_players)) * 100
+        }
+        
+        return jsonify({"success": True, "health": health_status})
+    
+    elif action == "cleanup_old_data":
+        # Очистка старых данных
+        cutoff_date = datetime.now() - timedelta(days=30)
+        removed_count = 0
+        
+        players = db.get_all_players()
+        for user_id, player in players.items():
+            last_login = player.get('last_login')
+            if last_login:
+                try:
+                    login_date = datetime.fromisoformat(last_login.replace('Z', '+00:00'))
+                    if login_date < cutoff_date:
+                        del db.players[user_id]
+                        removed_count += 1
+                except:
+                    pass
+        
+        if removed_count > 0:
+            db.save_data()
+        
+        return jsonify({"success": True, "message": f"Removed {removed_count} inactive players"})
+    
+    elif action == "backup_database":
+        # Создание резервной копии
+        backup_data = {
+            "players": db.get_all_players(),
+            "p2p_orders": p2p_manager.orders,
+            "backup_created": datetime.now().isoformat(),
+            "backup_version": "1.0"
+        }
+        
+        backup_filename = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        try:
+            with open(backup_filename, 'w', encoding='utf-8') as f:
+                json.dump(backup_data, f, indent=2, ensure_ascii=False)
+            return jsonify({"success": True, "message": f"Backup created: {backup_filename}", "filename": backup_filename})
+        except Exception as e:
+            return jsonify({"success": False, "error": f"Backup failed: {str(e)}"})
+    
+    elif action == "simulate_market_crash":
+        # Симуляция краха рынка
+        players = db.get_all_players()
+        affected_players = 0
+        
+        for user_id, player in players.items():
+            # Снижаем все цены на 50%
+            for symbol in CRYPTOS:
+                player["current_prices"][symbol] *= 0.5
+            
+            # Пересчитываем портфель
+            portfolio_value = sum(
+                player["portfolio"][symbol] * player["current_prices"][symbol] 
+                for symbol in CRYPTOS
+            )
+            player["portfolio_value"] = round(portfolio_value, 2)
+            player["total_value"] = round(player["balance"] + portfolio_value, 2)
+            
+            db.save_player(user_id, player)
+            affected_players += 1
+        
+        return jsonify({"success": True, "message": f"Simulated market crash for {affected_players} players"})
+    
+    elif action == "simulate_market_boom":
+        # Симуляция бума рынка
+        players = db.get_all_players()
+        affected_players = 0
+        
+        for user_id, player in players.items():
+            # Повышаем все цены на 100%
+            for symbol in CRYPTOS:
+                player["current_prices"][symbol] *= 2.0
+            
+            # Пересчитываем портфель
+            portfolio_value = sum(
+                player["portfolio"][symbol] * player["current_prices"][symbol] 
+                for symbol in CRYPTOS
+            )
+            player["portfolio_value"] = round(portfolio_value, 2)
+            player["total_value"] = round(player["balance"] + portfolio_value, 2)
+            
+            db.save_player(user_id, player)
+            affected_players += 1
+        
+        return jsonify({"success": True, "message": f"Simulated market boom for {affected_players} players"})
+    
+    elif action == "reset_economy":
+        # Полный сброс экономики
+        players = db.get_all_players()
+        reset_count = 0
+        
+        for user_id in players.keys():
+            new_data = create_new_player_data()
+            db.save_player(user_id, new_data)
+            reset_count += 1
+        
+        # Очищаем P2P ордера
+        p2p_manager.orders = []
+        p2p_manager.save_orders()
+        
+        return jsonify({"success": True, "message": f"Complete economy reset for {reset_count} players"})
     
     else:
         return jsonify({"success": False, "error": "Unknown action"})
@@ -1142,6 +1329,9 @@ def check_admin():
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
+# Глобальная переменная для времени старта
+app_start_time = time.time()
+
 if __name__ == '__main__':
     print(f"🚀 Starting Crypto Exchange Pro on port {port}")
     print(f"📊 Current players: {len(db.get_all_players())}")
@@ -1149,4 +1339,5 @@ if __name__ == '__main__':
     print(f"🤝 P2P Market: /p2p")
     print(f"🔒 Admin user ID: {ADMIN_USER_ID}")
     print(f"🔑 Default admin password: admin123")
+    print(f"🆕 Added 10 new admin functions!")
     app.run(host='0.0.0.0', port=port, debug=False)
