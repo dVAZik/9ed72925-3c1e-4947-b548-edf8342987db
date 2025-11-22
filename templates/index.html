@@ -23,10 +23,6 @@
             --text-accent: #00ff88;
             --positive: #00ff88;
             --negative: #ff4444;
-            --btc: #f7931a;
-            --eth: #627eea;
-            --sol: #00ffbd;
-            --ada: #0033ad;
         }
         
         body {
@@ -103,6 +99,7 @@
             cursor: pointer;
             transition: background 0.2s;
             border: none;
+            color: inherit;
         }
         
         .ticker-item.active {
@@ -144,6 +141,7 @@
             margin-bottom: 16px;
             border: 1px solid var(--border);
             height: 200px;
+            position: relative;
         }
         
         /* Order Book */
@@ -278,6 +276,13 @@
             color: #fff;
         }
         
+        .update-action {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            margin-bottom: 16px;
+        }
+        
         .action-btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
@@ -327,10 +332,14 @@
             font-size: 0.8em;
         }
         
-        .btc-bg { background: var(--btc); }
-        .eth-bg { background: var(--eth); }
-        .sol-bg { background: var(--sol); }
-        .ada-bg { background: var(--ada); }
+        .btc-bg { background: #f7931a; }
+        .eth-bg { background: #627eea; }
+        .bnb-bg { background: #f3ba2f; }
+        .xrp-bg { background: #23292f; }
+        .ada-bg { background: #0033ad; }
+        .doge-bg { background: #c2a633; }
+        .sol-bg { background: #00ffbd; }
+        .dot-bg { background: #e6007a; }
         
         .asset-details {
             line-height: 1.3;
@@ -384,6 +393,13 @@
             color: var(--text-secondary);
             display: none;
         }
+        
+        .empty-portfolio {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
     </style>
 </head>
 <body>
@@ -419,21 +435,31 @@
         
         <!-- Trading View -->
         <div class="trading-view">
+            <button class="action-btn update-action" onclick="updatePrices()">
+                🔄 Update Prices
+            </button>
+            
             <div class="chart-container">
                 <canvas id="priceChart"></canvas>
             </div>
             
             <div class="order-book">
                 <div class="order-column bids">
-                    <div class="order-header">Bids</div>
+                    <div class="order-header">Bids (Buy)</div>
                     <div id="bidsList">
-                        <!-- Bids will be populated by JavaScript -->
+                        <div class="order-row">
+                            <span>Loading...</span>
+                            <span>-</span>
+                        </div>
                     </div>
                 </div>
                 <div class="order-column asks">
-                    <div class="order-header">Asks</div>
+                    <div class="order-header">Asks (Sell)</div>
                     <div id="asksList">
-                        <!-- Asks will be populated by JavaScript -->
+                        <div class="order-row">
+                            <span>Loading...</span>
+                            <span>-</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -446,7 +472,7 @@
                 
                 <div class="input-group">
                     <label class="input-label">Amount</label>
-                    <input type="number" class="input-field" id="orderAmount" placeholder="0.00" step="0.001" min="0">
+                    <input type="number" class="input-field" id="orderAmount" placeholder="0.00" step="0.001" min="0" oninput="updateOrderCalculation()">
                 </div>
                 
                 <div class="input-group">
@@ -459,7 +485,7 @@
                 
                 <div class="input-group" id="limitPriceGroup" style="display: none;">
                     <label class="input-label">Limit Price ($)</label>
-                    <input type="number" class="input-field" id="limitPrice" placeholder="0.00" step="0.01" min="0">
+                    <input type="number" class="input-field" id="limitPrice" placeholder="0.00" step="0.01" min="0" oninput="updateOrderCalculation()">
                 </div>
                 
                 <div class="input-group">
@@ -476,7 +502,9 @@
         <div class="portfolio-section">
             <div class="section-title">Portfolio</div>
             <div class="portfolio-grid" id="portfolioGrid">
-                <!-- Portfolio items will be populated by JavaScript -->
+                <div class="empty-portfolio">
+                    No assets in portfolio. Start trading!
+                </div>
             </div>
         </div>
     </div>
@@ -493,10 +521,14 @@
         let baseUrl = window.location.origin;
         
         const CRYPTO_CONFIG = {
-            'BTC': { name: 'Bitcoin', color: '#f7931a' },
-            'ETH': { name: 'Ethereum', color: '#627eea' },
-            'SOL': { name: 'Solana', color: '#00ffbd' },
-            'ADA': { name: 'Cardano', color: '#0033ad' }
+            'BTC': { name: 'Bitcoin', color: '#f7931a', emoji: '₿' },
+            'ETH': { name: 'Ethereum', color: '#627eea', emoji: '🔷' },
+            'BNB': { name: 'Binance Coin', color: '#f3ba2f', emoji: '💠' },
+            'XRP': { name: 'Ripple', color: '#23292f', emoji: '⚡' },
+            'ADA': { name: 'Cardano', color: '#0033ad', emoji: '🃏' },
+            'DOGE': { name: 'Dogecoin', color: '#c2a633', emoji: '🐕' },
+            'SOL': { name: 'Solana', color: '#00ffbd', emoji: '🔆' },
+            'DOT': { name: 'Polkadot', color: '#e6007a', emoji: '🔴' }
         };
         
         // Инициализация
@@ -531,7 +563,6 @@
                 currentPlayerData = marketData;
                 updateDisplay(marketData);
                 updateChart();
-                showNotification('Market data updated');
             } catch (error) {
                 console.error('Error:', error);
                 showNotification('Connection error');
@@ -540,15 +571,42 @@
             }
         }
         
+        async function updatePrices() {
+            try {
+                const userId = getUserId();
+                const response = await fetch(`${baseUrl}/api/update_prices`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    currentPlayerData = result.player;
+                    updateDisplay(result.player);
+                    updateChart();
+                    showNotification('Prices updated successfully');
+                } else {
+                    showNotification(result.error);
+                }
+            } catch (error) {
+                console.error('Update error:', error);
+                showNotification('Update failed');
+            }
+        }
+        
         // Обновление интерфейса
         function updateDisplay(data) {
+            if (!data) return;
+            
             // Обновляем балансы
             document.getElementById('totalValue').textContent = `$${data.total_value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
             document.getElementById('availableBalance').textContent = `$${data.balance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
             
             const profit = data.total_value - 10000;
             const profitElement = document.getElementById('profitLoss');
-            profitElement.textContent = `${profit >= 0 ? '+' : ''}$${profit.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            profitElement.textContent = `${profit >= 0 ? '+' : ''}$${Math.abs(profit).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
             profitElement.style.color = profit >= 0 ? 'var(--positive)' : 'var(--negative)';
             
             // Обновляем тикер
@@ -577,9 +635,19 @@
                 tickerItem.className = `ticker-item ${selectedSymbol === symbol ? 'active' : ''}`;
                 tickerItem.onclick = () => selectSymbol(symbol);
                 
+                // Форматируем цену в зависимости от ее величины
+                let priceFormatted;
+                if (price < 1) {
+                    priceFormatted = `$${price.toFixed(4)}`;
+                } else if (price < 1000) {
+                    priceFormatted = `$${price.toFixed(2)}`;
+                } else {
+                    priceFormatted = `$${price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                }
+                
                 tickerItem.innerHTML = `
-                    <div class="ticker-symbol">${symbol}</div>
-                    <div class="ticker-price">$${price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                    <div class="ticker-symbol">${config.emoji} ${symbol}</div>
+                    <div class="ticker-price">${priceFormatted}</div>
                     <div class="ticker-change ${change >= 0 ? 'change-positive' : 'change-negative'}">
                         ${change >= 0 ? '+' : ''}${change.toFixed(2)}%
                     </div>
@@ -590,6 +658,8 @@
         }
         
         function updateOrderBook(data) {
+            if (!data.order_books || !data.order_books[selectedSymbol]) return;
+            
             const orderBook = data.order_books[selectedSymbol];
             const bidsList = document.getElementById('bidsList');
             const asksList = document.getElementById('asksList');
@@ -602,7 +672,7 @@
                 const row = document.createElement('div');
                 row.className = 'order-row';
                 row.innerHTML = `
-                    <span>$${bid.price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                    <span>$${bid.price.toLocaleString('en-US', {minimumFractionDigits: bid.price < 1 ? 4 : 2, maximumFractionDigits: bid.price < 1 ? 4 : 2})}</span>
                     <span>${bid.amount}</span>
                 `;
                 bidsList.appendChild(row);
@@ -612,7 +682,7 @@
                 const row = document.createElement('div');
                 row.className = 'order-row';
                 row.innerHTML = `
-                    <span>$${ask.price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                    <span>$${ask.price.toLocaleString('en-US', {minimumFractionDigits: ask.price < 1 ? 4 : 2, maximumFractionDigits: ask.price < 1 ? 4 : 2})}</span>
                     <span>${ask.amount}</span>
                 `;
                 asksList.appendChild(row);
@@ -623,18 +693,21 @@
             const portfolioGrid = document.getElementById('portfolioGrid');
             portfolioGrid.innerHTML = '';
             
+            let hasAssets = false;
+            
             for (const [symbol, config] of Object.entries(CRYPTO_CONFIG)) {
                 const amount = data.portfolio[symbol];
                 const price = data.current_prices[symbol];
                 const value = amount * price;
                 
                 if (amount > 0) {
+                    hasAssets = true;
                     const portfolioItem = document.createElement('div');
                     portfolioItem.className = 'portfolio-item';
                     
                     portfolioItem.innerHTML = `
                         <div class="asset-info">
-                            <div class="asset-icon ${symbol.toLowerCase()}-bg">${symbol}</div>
+                            <div class="asset-icon ${symbol.toLowerCase()}-bg">${config.emoji}</div>
                             <div class="asset-details">
                                 <div class="asset-symbol">${config.name}</div>
                                 <div class="asset-amount">${amount.toFixed(4)} ${symbol}</div>
@@ -642,23 +715,32 @@
                         </div>
                         <div class="asset-value">
                             <div class="value-amount">$${value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                            <div class="value-usd">@ $${price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                            <div class="value-usd">@ $${price.toLocaleString('en-US', {minimumFractionDigits: price < 1 ? 4 : 2, maximumFractionDigits: price < 1 ? 4 : 2})}</div>
                         </div>
                     `;
                     
                     portfolioGrid.appendChild(portfolioItem);
                 }
             }
+            
+            if (!hasAssets) {
+                portfolioGrid.innerHTML = '<div class="empty-portfolio">No assets in portfolio. Start trading!</div>';
+            }
         }
         
         // График
         function updateChart() {
-            if (!currentPlayerData) return;
+            if (!currentPlayerData || !currentPlayerData.price_history || !currentPlayerData.price_history[selectedSymbol]) return;
             
             const ctx = document.getElementById('priceChart').getContext('2d');
             const history = currentPlayerData.price_history[selectedSymbol];
+            const currentPrice = currentPlayerData.current_prices[selectedSymbol];
+            const previousPrice = history.length > 1 ? history[history.length - 2] : currentPrice;
+            const isPositive = currentPrice >= previousPrice;
             
-            if (priceChart) priceChart.destroy();
+            if (priceChart) {
+                priceChart.destroy();
+            }
             
             priceChart = new Chart(ctx, {
                 type: 'line',
@@ -666,8 +748,8 @@
                     labels: Array.from({length: history.length}, (_, i) => ''),
                     datasets: [{
                         data: history,
-                        borderColor: CRYPTO_CONFIG[selectedSymbol].color,
-                        backgroundColor: CRYPTO_CONFIG[selectedSymbol].color + '20',
+                        borderColor: isPositive ? 'var(--positive)' : 'var(--negative)',
+                        backgroundColor: isPositive ? 'rgba(0, 255, 136, 0.1)' : 'rgba(255, 68, 68, 0.1)',
                         borderWidth: 2,
                         fill: true,
                         tension: 0.4,
@@ -677,7 +759,10 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    },
                     scales: {
                         y: {
                             display: false
@@ -710,7 +795,9 @@
             document.querySelectorAll('.ticker-item').forEach(item => item.classList.remove('active'));
             event.target.closest('.ticker-item').classList.add('active');
             updateChart();
-            updateOrderBook(currentPlayerData);
+            if (currentPlayerData) {
+                updateOrderBook(currentPlayerData);
+            }
             updateOrderCalculation();
         }
         
@@ -734,7 +821,7 @@
                 total = amount * limitPrice;
             }
             
-            document.getElementById('orderTotal').value = `$${total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('orderTotal').value = total > 0 ? `$${total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '$0.00';
         }
         
         async function placeOrder(type) {
@@ -783,7 +870,7 @@
                 }
             } catch (error) {
                 console.error('Order error:', error);
-                showNotification('Order failed');
+                showNotification('Order failed: ' + error.message);
             }
         }
         
@@ -798,10 +885,6 @@
         function showLoading(show) {
             document.getElementById('loading').style.display = show ? 'block' : 'none';
         }
-        
-        // Слушатели событий
-        document.getElementById('orderAmount').addEventListener('input', updateOrderCalculation);
-        document.getElementById('limitPrice').addEventListener('input', updateOrderCalculation);
         
         // Авто-обновление
         setInterval(loadMarketData, 10000);
