@@ -46,12 +46,6 @@
             margin-bottom: 20px;
             border: 1px solid var(--border);
         }
-        <!-- Navigation -->
-        <div class="nav-buttons" style="margin: 20px; display: grid; grid-template-columns: 1fr; gap: 10px;">
-            <a href="/" class="nav-btn trade" style="text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px; padding: 12px; background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary);">
-                📊 Back to Trading
-            </a>
-        </div>
         
         .logo {
             font-size: 1.8em;
@@ -62,6 +56,40 @@
         .subtitle {
             color: var(--text-secondary);
             font-size: 1.1em;
+        }
+        
+        /* Navigation */
+        .nav-buttons {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .nav-btn {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        
+        .nav-btn:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--text-accent);
+        }
+        
+        .nav-btn.trade {
+            background: linear-gradient(45deg, #627eea, #8a2be2);
         }
         
         .login-section {
@@ -244,6 +272,53 @@
             padding: 20px;
             color: var(--text-secondary);
         }
+        
+        .crypto-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .crypto-stat {
+            background: var(--bg-tertiary);
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+        
+        .crypto-stat-value {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .crypto-stat-label {
+            font-size: 0.8em;
+            color: var(--text-secondary);
+        }
+        
+        .top-players {
+            margin-top: 15px;
+        }
+        
+        .top-player {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .top-player:last-child {
+            border-bottom: none;
+        }
+        
+        .player-rank {
+            font-weight: 600;
+            margin-right: 10px;
+        }
     </style>
 </head>
 <body>
@@ -251,6 +326,13 @@
         <div class="header">
             <div class="logo">🔐 Crypto Exchange Admin Panel</div>
             <div class="subtitle">System Management & Player Monitoring</div>
+        </div>
+        
+        <!-- Navigation -->
+        <div class="nav-buttons">
+            <a href="/" class="nav-btn trade">
+                📊 Back to Trading
+            </a>
         </div>
         
         <div class="login-section" id="loginSection">
@@ -285,6 +367,18 @@
                     </div>
                 </div>
                 
+                <!-- Crypto Statistics -->
+                <div class="section-title">💰 Crypto Statistics</div>
+                <div class="crypto-stats" id="cryptoStats">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+                
+                <!-- Top Players -->
+                <div class="section-title">🏆 Top 10 Players</div>
+                <div class="top-players" id="topPlayers">
+                    <!-- Will be populated by JavaScript -->
+                </div>
+                
                 <div class="section-title">⚡ System Actions</div>
                 <div class="actions-grid">
                     <button class="btn btn-primary" onclick="systemAction('save')">💾 Save Data</button>
@@ -316,15 +410,39 @@
     <script>
         let adminPassword = '';
         
-        // Форматирование чисел
+        // Расширенная функция форматирования чисел
         function formatNumber(num, decimals = 2) {
             if (num === 0 || !num) return '0';
+            
             const absNum = Math.abs(num);
-            if (absNum >= 1e12) return (num / 1e12).toFixed(decimals) + 'T';
-            else if (absNum >= 1e9) return (num / 1e9).toFixed(decimals) + 'B';
-            else if (absNum >= 1e6) return (num / 1e6).toFixed(decimals) + 'M';
-            else if (absNum >= 1e3) return (num / 1e3).toFixed(decimals) + 'K';
-            else return num.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+            const suffixes = [
+                '', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 
+                'Dc', 'Ud', 'Dd', 'Td', 'Qad', 'Qid', 'Sxd', 'Spd', 'Ocd', 'Nod',
+                'Vg', 'Uvg', 'Dvg', 'Tvg', 'Qavg', 'Qivg', 'Sxvg', 'Spvg', 'Ocvg', 'Novg',
+                'Tg', 'Utg', 'Dtg', 'Ttg', 'Qatg', 'Qitg', 'Sxtg', 'Sptg', 'Octg', 'Notg'
+            ];
+            
+            let suffixIndex = 0;
+            let reducedNum = absNum;
+            
+            while (reducedNum >= 1000 && suffixIndex < suffixes.length - 1) {
+                reducedNum /= 1000;
+                suffixIndex++;
+            }
+            
+            const sign = num < 0 ? '-' : '';
+            const formattedNum = reducedNum.toFixed(decimals);
+            
+            // Убираем лишние нули
+            let cleanNum = formattedNum;
+            if (decimals > 0) {
+                cleanNum = formattedNum.replace(/\.?0+$/, '');
+                if (cleanNum.endsWith('.')) {
+                    cleanNum = cleanNum.slice(0, -1);
+                }
+            }
+            
+            return sign + cleanNum + suffixes[suffixIndex];
         }
         
         function formatCurrency(amount) {
@@ -389,12 +507,65 @@
                     document.getElementById('totalBalance').textContent = formatCurrency(stats.total_balance);
                     document.getElementById('totalPortfolio').textContent = formatCurrency(stats.total_portfolio_value);
                     document.getElementById('totalWealth').textContent = formatCurrency(stats.total_wealth);
+                    
+                    // Обновляем статистику по криптовалютам
+                    updateCryptoStats(stats.crypto_stats);
+                    
+                    // Обновляем топ игроков
+                    updateTopPlayers(stats.top_players);
                 } else {
                     showNotification(result.error, 'error');
                 }
             } catch (error) {
                 showNotification('Failed to load stats: ' + error.message, 'error');
             }
+        }
+        
+        // Обновление статистики по криптовалютам
+        function updateCryptoStats(cryptoStats) {
+            const cryptoStatsContainer = document.getElementById('cryptoStats');
+            cryptoStatsContainer.innerHTML = '';
+            
+            for (const [symbol, stats] of Object.entries(cryptoStats)) {
+                const cryptoStat = document.createElement('div');
+                cryptoStat.className = 'crypto-stat';
+                
+                cryptoStat.innerHTML = `
+                    <div class="crypto-stat-value">${formatNumber(stats.total_owned, 2)}</div>
+                    <div class="crypto-stat-label">${symbol}</div>
+                    <div class="crypto-stat-label">${stats.players_owning} owners</div>
+                `;
+                
+                cryptoStatsContainer.appendChild(cryptoStat);
+            }
+        }
+        
+        // Обновление топ игроков
+        function updateTopPlayers(topPlayers) {
+            const topPlayersContainer = document.getElementById('topPlayers');
+            topPlayersContainer.innerHTML = '';
+            
+            if (topPlayers.length === 0) {
+                topPlayersContainer.innerHTML = '<div class="loading">No players found</div>';
+                return;
+            }
+            
+            topPlayers.forEach((player, index) => {
+                const topPlayer = document.createElement('div');
+                topPlayer.className = 'top-player';
+                
+                const rankEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${index + 1}.`;
+                
+                topPlayer.innerHTML = `
+                    <div>
+                        <span class="player-rank">${rankEmoji}</span>
+                        <span>${player.username}</span>
+                    </div>
+                    <div class="compact-number">${formatCurrency(player.total_value)}</div>
+                `;
+                
+                topPlayersContainer.appendChild(topPlayer);
+            });
         }
         
         // Загрузка игроков
@@ -464,7 +635,7 @@
                     let portfolioHtml = '';
                     for (const [symbol, amount] of Object.entries(player.portfolio)) {
                         if (amount > 0) {
-                            portfolioHtml += `<div>${symbol}: ${amount}</div>`;
+                            portfolioHtml += `<div>${symbol}: ${formatNumber(amount, 4)}</div>`;
                         }
                     }
                     
@@ -479,6 +650,12 @@
                             <div class="player-stats">Last Login: ${new Date(player.last_login).toLocaleString()}</div>
                         </div>
                         
+                        <div class="section-title">Portfolio</div>
+                        <div style="margin-bottom: 20px;">
+                            ${portfolioHtml || '<div>No assets in portfolio</div>'}
+                        </div>
+                        
+                        <div class="section-title">Manage Balance</div>
                         <div class="input-group">
                             <label class="input-label">Add Balance Amount ($)</label>
                             <input type="number" class="input-field" id="addBalanceAmount" placeholder="1000">
