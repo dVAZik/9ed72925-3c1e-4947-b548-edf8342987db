@@ -676,6 +676,155 @@ def admin_player_manage_route(user_id):
     else:
         return jsonify({"success": False, "error": "Unknown action"})
 
+# Дополнительные админ эндпоинты
+@app.route('/api/admin/player/<user_id>/portfolio', methods=['POST'])
+@require_admin_auth
+def admin_player_portfolio_route(user_id):
+    """Управление портфелем игрока"""
+    action = request.json.get('action')
+    symbol = request.json.get('symbol')
+    amount = float(request.json.get('amount', 0))
+    
+    player = db.get_player_data(user_id)
+    if not player:
+        return jsonify({"success": False, "error": "Player not found"})
+    
+    if symbol not in CRYPTOS:
+        return jsonify({"success": False, "error": "Invalid symbol"})
+    
+    if action == "add":
+        player["portfolio"][symbol] = player["portfolio"].get(symbol, 0) + amount
+        db.save_player(user_id, player)
+        return jsonify({"success": True, "message": f"Added {amount} {symbol} to {user_id}"})
+    
+    elif action == "set":
+        player["portfolio"][symbol] = amount
+        db.save_player(user_id, player)
+        return jsonify({"success": True, "message": f"Set {symbol} to {amount} for {user_id}"})
+    
+    elif action == "remove":
+        current_amount = player["portfolio"].get(symbol, 0)
+        if amount > current_amount:
+            return jsonify({"success": False, "error": f"Not enough {symbol} to remove"})
+        player["portfolio"][symbol] = current_amount - amount
+        db.save_player(user_id, player)
+        return jsonify({"success": True, "message": f"Removed {amount} {symbol} from {user_id}"})
+    
+    else:
+        return jsonify({"success": False, "error": "Unknown action"})
+
+@app.route('/api/admin/player/<user_id>/balance', methods=['POST'])
+@require_admin_auth
+def admin_player_balance_route(user_id):
+    """Расширенное управление балансом"""
+    action = request.json.get('action')
+    amount = float(request.json.get('amount', 0))
+    
+    player = db.get_player_data(user_id)
+    if not player:
+        return jsonify({"success": False, "error": "Player not found"})
+    
+    if action == "add":
+        player["balance"] += amount
+        player["total_value"] = player["balance"] + player["portfolio_value"]
+        db.save_player(user_id, player)
+        return jsonify({"success": True, "message": f"Added ${amount} to {user_id}"})
+    
+    elif action == "set":
+        player["balance"] = amount
+        player["total_value"] = player["balance"] + player["portfolio_value"]
+        db.save_player(user_id, player)
+        return jsonify({"success": True, "message": f"Set balance to ${amount} for {user_id}"})
+    
+    elif action == "multiply":
+        player["balance"] *= amount
+        player["total_value"] = player["balance"] + player["portfolio_value"]
+        db.save_player(user_id, player)
+        return jsonify({"success": True, "message": f"Multiplied balance by {amount}x for {user_id}"})
+    
+    else:
+        return jsonify({"success": False, "error": "Unknown action"})
+
+@app.route('/api/admin/player/<user_id>/prices', methods=['POST'])
+@require_admin_auth
+def admin_player_prices_route(user_id):
+    """Управление ценами игрока"""
+    action = request.json.get('action')
+    symbol = request.json.get('symbol')
+    price = float(request.json.get('price', 0))
+    multiplier = float(request.json.get('multiplier', 1))
+    
+    player = db.get_player_data(user_id)
+    if not player:
+        return jsonify({"success": False, "error": "Player not found"})
+    
+    if symbol and symbol not in CRYPTOS:
+        return jsonify({"success": False, "error": "Invalid symbol"})
+    
+    if action == "set_price":
+        if not symbol:
+            return jsonify({"success": False, "error": "Symbol required"})
+        player["current_prices"][symbol] = price
+        db.save_player(user_id, player)
+        return jsonify({"success": True, "message": f"Set {symbol} price to ${price} for {user_id}"})
+    
+    elif action == "multiply_prices":
+        if symbol:
+            # Умножить цену конкретной крипты
+            player["current_prices"][symbol] *= multiplier
+            db.save_player(user_id, player)
+            return jsonify({"success": True, "message": f"Multiplied {symbol} price by {multiplier}x for {user_id}"})
+        else:
+            # Умножить все цены
+            for crypto_symbol in CRYPTOS.keys():
+                player["current_prices"][crypto_symbol] *= multiplier
+            db.save_player(user_id, player)
+            return jsonify({"success": True, "message": f"Multiplied all prices by {multiplier}x for {user_id}"})
+    
+    elif action == "reset_prices":
+        # Сбросить цены к базовым значениям
+        for crypto_symbol, crypto_data in CRYPTOS.items():
+            base_price = crypto_data["base_price"]
+            player["current_prices"][crypto_symbol] = base_price * random.uniform(0.8, 1.2)
+        db.save_player(user_id, player)
+        return jsonify({"success": True, "message": f"Reset all prices to base values for {user_id}"})
+    
+    else:
+        return jsonify({"success": False, "error": "Unknown action"})
+
+@app.route('/api/admin/bulk_actions', methods=['POST'])
+@require_admin_auth
+def admin_bulk_actions_route():
+    """Массовые действия над всеми игроками"""
+    action = request.json.get('action')
+    amount = float(request.json.get('amount', 0))
+    multiplier = float(request.json.get('multiplier', 1))
+    
+    players = db.get_all_players()
+    
+    if action == "add_balance_all":
+        for user_id, player in players.items():
+            player["balance"] += amount
+            player["total_value"] = player["balance"] + player["portfolio_value"]
+            db.save_player(user_id, player)
+        return jsonify({"success": True, "message": f"Added ${amount} to all {len(players)} players"})
+    
+    elif action == "multiply_balance_all":
+        for user_id, player in players.items():
+            player["balance"] *= multiplier
+            player["total_value"] = player["balance"] + player["portfolio_value"]
+            db.save_player(user_id, player)
+        return jsonify({"success": True, "message": f"Multiplied balance by {multiplier}x for all {len(players)} players"})
+    
+    elif action == "reset_all_players":
+        for user_id in players.keys():
+            new_data = create_new_player_data()
+            db.save_player(user_id, new_data)
+        return jsonify({"success": True, "message": f"Reset all {len(players)} players"})
+    
+    else:
+        return jsonify({"success": False, "error": "Unknown action"})
+
 @app.route('/api/admin/system', methods=['POST'])
 @require_admin_auth
 def admin_system_route():
@@ -707,6 +856,108 @@ def admin_system_route():
             db.save_player(user_id, player)
         
         return jsonify({"success": True, "message": "Prices updated for all players"})
+    
+    else:
+        return jsonify({"success": False, "error": "Unknown action"})
+
+@app.route('/api/admin/system/advanced', methods=['POST'])
+@require_admin_auth
+def admin_system_advanced_route():
+    """Расширенные системные действия"""
+    action = request.json.get('action')
+    
+    if action == "clear_p2p_orders":
+        # Очистка всех P2P ордеров
+        p2p_manager.orders = []
+        p2p_manager.save_orders()
+        return jsonify({"success": True, "message": "Cleared all P2P orders"})
+    
+    elif action == "export_data":
+        # Экспорт данных (упрощенный)
+        players = db.get_all_players()
+        export_data = {
+            "players": players,
+            "p2p_orders": p2p_manager.orders,
+            "exported_at": datetime.now().isoformat(),
+            "total_players": len(players),
+            "total_p2p_orders": len(p2p_manager.orders)
+        }
+        return jsonify({"success": True, "data": export_data})
+    
+    elif action == "get_detailed_stats":
+        # Подробная статистика
+        players = db.get_all_players()
+        total_players = len(players)
+        
+        if total_players == 0:
+            return jsonify({"success": True, "stats": {}})
+        
+        # Базовая статистика
+        total_balance = sum(player['balance'] for player in players.values())
+        total_portfolio = sum(player['portfolio_value'] for player in players.values())
+        
+        # Распределение богатства
+        wealth_values = [player['total_value'] for player in players.values()]
+        wealth_values.sort(reverse=True)
+        
+        # Топ 10 игроков
+        top_players = sorted(
+            [(user_id, player) for user_id, player in players.items()],
+            key=lambda x: x[1].get('total_value', 0),
+            reverse=True
+        )[:10]
+        
+        # Статистика по активам
+        asset_stats = {}
+        for symbol in CRYPTOS.keys():
+            total_owned = sum(player.get('portfolio', {}).get(symbol, 0) for player in players.values())
+            players_owning = sum(1 for player in players.values() if player.get('portfolio', {}).get(symbol, 0) > 0)
+            total_value = sum(player.get('portfolio', {}).get(symbol, 0) * player['current_prices'][symbol] for player in players.values())
+            
+            asset_stats[symbol] = {
+                'total_owned': total_owned,
+                'players_owning': players_owning,
+                'percentage_owners': (players_owning / total_players) * 100,
+                'total_value': total_value
+            }
+        
+        detailed_stats = {
+            "basic": {
+                "total_players": total_players,
+                "total_balance": total_balance,
+                "total_portfolio_value": total_portfolio,
+                "total_wealth": total_balance + total_portfolio,
+                "average_balance": total_balance / total_players,
+                "average_portfolio": total_portfolio / total_players,
+                "average_wealth": (total_balance + total_portfolio) / total_players
+            },
+            "wealth_distribution": {
+                "richest_player": wealth_values[0] if wealth_values else 0,
+                "poorest_player": wealth_values[-1] if wealth_values else 0,
+                "median_wealth": wealth_values[len(wealth_values)//2] if wealth_values else 0,
+                "top_10_percent_wealth": sum(wealth_values[:max(1, len(wealth_values)//10)]) if wealth_values else 0
+            },
+            "assets": asset_stats,
+            "top_players": [
+                {
+                    "user_id": user_id,
+                    "username": player.get('username', user_id),
+                    "total_value": player.get('total_value', 0),
+                    "balance": player.get('balance', 0),
+                    "portfolio_value": player.get('portfolio_value', 0),
+                    "assets_count": len([v for v in player.get('portfolio', {}).values() if v > 0])
+                }
+                for user_id, player in top_players
+            ],
+            "p2p_stats": {
+                "total_orders": len(p2p_manager.orders),
+                "active_orders": len([o for o in p2p_manager.orders if o['status'] == 'active']),
+                "filled_orders": len([o for o in p2p_manager.orders if o['status'] == 'filled']),
+                "cancelled_orders": len([o for o in p2p_manager.orders if o['status'] == 'cancelled'])
+            }
+        }
+        
+        return jsonify({"success": True, "stats": detailed_stats})
     
     else:
         return jsonify({"success": False, "error": "Unknown action"})
