@@ -6,139 +6,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Arial', sans-serif;
-            background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
-            color: white;
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: Arial; 
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            color: white; 
+            padding: 20px;
             min-height: 100vh;
-            padding: 20px;
-            line-height: 1.6;
         }
-        
-        .container {
-            max-width: 400px;
-            margin: 0 auto;
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 20px;
-            padding: 15px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 15px;
-            backdrop-filter: blur(10px);
-        }
-        
-        .stats-card {
-            background: rgba(255,255,255,0.1);
-            border-radius: 15px;
-            padding: 15px;
+        .container { max-width: 400px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .card { 
+            background: rgba(255,255,255,0.1); 
+            border-radius: 15px; 
+            padding: 15px; 
             margin-bottom: 15px;
-            backdrop-filter: blur(10px);
         }
-        
-        .stat-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 8px;
-            padding: 5px 0;
+        .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .resources { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 15px 0; }
+        .btn { 
+            background: #4CAF50; 
+            border: none; 
+            border-radius: 10px; 
+            color: white; 
+            padding: 15px; 
+            font-size: 16px; 
+            cursor: pointer; 
+            width: 100%;
+            margin: 5px 0;
         }
-        
-        .resources-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 10px;
-            margin: 15px 0;
-        }
-        
-        .resource-card {
-            background: rgba(255,255,255,0.15);
-            border-radius: 10px;
-            padding: 15px;
-            text-align: center;
-            backdrop-filter: blur(5px);
-        }
-        
-        .resource-icon {
-            font-size: 24px;
-            margin-bottom: 5px;
-        }
-        
-        .actions {
-            display: grid;
-            gap: 10px;
-            margin: 20px 0;
-        }
-        
-        .btn {
-            background: linear-gradient(45deg, #FF6B6B, #FF8E53);
-            border: none;
-            border-radius: 12px;
-            color: white;
-            padding: 16px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-align: center;
-        }
-        
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(255,107,107,0.4);
-        }
-        
-        .btn-sell {
-            background: linear-gradient(45deg, #4ECDC4, #44A08D);
-        }
-        
-        .btn-upgrade {
-            background: linear-gradient(45deg, #FFD93D, #FF9A3D);
-        }
-        
-        .mining-animation {
-            text-align: center;
-            font-size: 48px;
-            margin: 20px 0;
-            display: none;
-            animation: bounce 1s infinite;
-        }
-        
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-10px); }
-        }
-        
-        .notification {
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0,0,0,0.9);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 25px;
-            z-index: 1000;
-            display: none;
-            animation: fadeInOut 3s ease-in-out;
-        }
-        
-        @keyframes fadeInOut {
-            0%, 100% { opacity: 0; }
-            10%, 90% { opacity: 1; }
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 20px;
-            display: none;
-        }
+        .btn:hover { opacity: 0.9; }
+        .btn-mine { background: #FF6B6B; }
+        .btn-sell { background: #4ECDC4; }
+        .btn-upgrade { background: #FFD93D; color: black; }
+        .resource { text-align: center; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 10px; }
+        #message { margin-top: 20px; text-align: center; padding: 10px; border-radius: 10px; }
+        .success { background: rgba(76, 175, 80, 0.3); }
+        .error { background: rgba(244, 67, 54, 0.3); }
     </style>
 </head>
 <body>
@@ -148,239 +52,169 @@
             <p>Космическая добыча ресурсов</p>
         </div>
         
-        <div class="stats-card">
-            <div class="stat-row">
-                <span>💰 Кредиты:</span>
-                <span id="credits">100</span>
-            </div>
-            <div class="stat-row">
-                <span>🚀 Уровень корабля:</span>
-                <span id="shipLevel">1</span>
-            </div>
-        </div>
-        
-        <div class="stats-card">
-            <h3 style="margin-bottom: 10px;">📦 Ресурсы:</h3>
-            <div class="resources-grid">
-                <div class="resource-card">
-                    <div class="resource-icon">🪨</div>
-                    <div>Железо</div>
-                    <div id="ironCount">0</div>
-                </div>
-                <div class="resource-card">
-                    <div class="resource-icon">📦</div>
-                    <div>Золото</div>
-                    <div id="goldCount">0</div>
-                </div>
-                <div class="resource-card">
-                    <div class="resource-icon">💎</div>
-                    <div>Кристаллы</div>
-                    <div id="crystalsCount">0</div>
-                </div>
+        <div class="card">
+            <h3>Статистика:</h3>
+            <div class="stats">
+                <div>💰 Кредиты:</div>
+                <div id="credits">100</div>
+                <div>🚀 Уровень корабля:</div>
+                <div id="shipLevel">1</div>
             </div>
         </div>
         
-        <div class="actions">
-            <button class="btn" onclick="mineResources()">⛏ Добывать ресурсы</button>
-            <button class="btn btn-upgrade" onclick="upgradeShip()">🛠 Улучшить корабль</button>
-            
-            <div style="margin: 10px 0; text-align: center; font-weight: bold;">
-                Продать ресурсы:
+        <div class="card">
+            <h3>Ресурсы:</h3>
+            <div class="resources">
+                <div class="resource">🪨 Железо: <span id="iron">0</span></div>
+                <div class="resource">📦 Золото: <span id="gold">0</span></div>
+                <div class="resource">💎 Кристаллы: <span id="crystals">0</span></div>
             </div>
-            
-            <button class="btn btn-sell" onclick="sellResource('iron')">🛒 Продать железо (2💰)</button>
-            <button class="btn btn-sell" onclick="sellResource('gold')">🛒 Продать золото (5💰)</button>
-            <button class="btn btn-sell" onclick="sellResource('crystals')">🛒 Продать кристаллы (15💰)</button>
         </div>
         
-        <div class="mining-animation" id="miningAnimation">
-            ⛏
-        </div>
+        <button class="btn btn-mine" onclick="mine()">⛏ Добывать ресурсы</button>
+        <button class="btn btn-upgrade" onclick="upgrade()">🛠 Улучшить корабль</button>
         
-        <div class="loading" id="loading">
-            Загрузка...
-        </div>
+        <button class="btn btn-sell" onclick="sell('iron')">🛒 Продать железо (2💰)</button>
+        <button class="btn btn-sell" onclick="sell('gold')">🛒 Продать золото (5💰)</button>
+        <button class="btn btn-sell" onclick="sell('crystals')">🛒 Продать кристаллы (15💰)</button>
+        
+        <div id="message"></div>
     </div>
 
-    <div class="notification" id="notification"></div>
-
     <script>
-        // Глобальные переменные
-        let currentPlayerData = null;
+        // Для тестирования
+        let user = { id: 'test_user_' + Math.random().toString(36).substr(2, 9) };
+        let baseUrl = window.location.origin;
         
-        // Инициализация Telegram Web App
-        function initTelegram() {
-            if (window.Telegram && Telegram.WebApp) {
-                const tg = window.Telegram.WebApp;
-                tg.expand();
-                tg.enableClosingConfirmation();
-                return tg.initDataUnsafe.user;
-            }
-            return null;
+        // Если в Telegram, используем реальные данные
+        if (window.Telegram && Telegram.WebApp) {
+            const tg = window.Telegram.WebApp;
+            user = tg.initDataUnsafe.user || { id: 'telegram_user' };
+            tg.expand();
+            console.log('Telegram Web App initialized');
         }
         
-        // Получение ID пользователя
-        function getUserId() {
-            const telegramUser = initTelegram();
-            if (telegramUser && telegramUser.id) {
-                return telegramUser.id.toString();
-            }
-            // Для тестирования без Telegram
-            return 'test_user_' + Math.random().toString(36).substr(2, 9);
-        }
+        console.log('Base URL:', baseUrl);
+        console.log('User ID:', user.id);
         
-        // Загрузка данных игрока
-        async function loadPlayerData() {
-            showLoading(true);
+        async function loadGame() {
             try {
-                const userId = getUserId();
-                const response = await fetch(`/api/player/${userId}`);
+                showMessage('Загрузка игры...', 'success');
+                const response = await fetch(`${baseUrl}/api/player/${user.id}`);
                 
                 if (!response.ok) {
-                    throw new Error('Ошибка загрузки данных');
+                    throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 
-                const playerData = await response.json();
-                currentPlayerData = playerData;
-                updateDisplay(playerData);
-                showNotification('Данные игры загружены!');
+                const data = await response.json();
+                updateDisplay(data);
+                showMessage('Игра загружена!', 'success');
             } catch (error) {
-                console.error('Error loading player data:', error);
-                showNotification('Ошибка загрузки данных игры');
-            } finally {
-                showLoading(false);
+                console.error('Error loading game:', error);
+                showMessage('Ошибка загрузки: ' + error.message, 'error');
             }
         }
         
-        // Добыча ресурсов
-        async function mineResources() {
-            const miningAnimation = document.getElementById('miningAnimation');
-            miningAnimation.style.display = 'block';
-            
+        async function mine() {
             try {
-                const userId = getUserId();
-                const response = await fetch('/api/mine', {
+                showMessage('Добываем ресурсы...', 'success');
+                const response = await fetch(`${baseUrl}/api/mine`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        user_id: userId
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: user.id })
                 });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 
                 const result = await response.json();
                 
                 if (result.success) {
-                    currentPlayerData = result.player;
                     updateDisplay(result.player);
-                    
-                    let message = `Добыто: Железо +${result.resources.iron}, Золото +${result.resources.gold}`;
-                    if (result.resources.crystals > 0) {
-                        message += `, Кристаллы +${result.resources.crystals} 💎`;
-                    }
-                    
-                    showNotification(message);
+                    showMessage(`Добыто: +${result.resources.iron}🪨 +${result.resources.gold}📦 +${result.resources.crystals}💎`, 'success');
                 } else {
-                    showNotification(result.error || 'Ошибка добычи');
+                    showMessage(result.error, 'error');
                 }
             } catch (error) {
                 console.error('Mining error:', error);
-                showNotification('Ошибка соединения');
+                showMessage('Ошибка добычи: ' + error.message, 'error');
             }
-            
-            setTimeout(() => {
-                miningAnimation.style.display = 'none';
-            }, 1000);
         }
         
-        // Продажа ресурсов
-        async function sellResource(resourceType) {
+        async function sell(resourceType) {
             try {
-                const userId = getUserId();
-                const response = await fetch('/api/sell', {
+                const response = await fetch(`${baseUrl}/api/sell`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        user_id: userId,
-                        resource_type: resourceType
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        user_id: user.id, 
+                        resource_type: resourceType 
                     })
                 });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 
                 const result = await response.json();
                 
                 if (result.success) {
-                    currentPlayerData = result.player;
                     updateDisplay(result.player);
-                    showNotification(`Продано! Получено: ${result.income} кредитов 💰`);
+                    showMessage(`Продано! +${result.income}💰`, 'success');
                 } else {
-                    showNotification(result.error || 'Нечего продавать');
+                    showMessage(result.error, 'error');
                 }
             } catch (error) {
                 console.error('Selling error:', error);
-                showNotification('Ошибка продажи');
+                showMessage('Ошибка продажи: ' + error.message, 'error');
             }
         }
         
-        // Улучшение корабля
-        async function upgradeShip() {
+        async function upgrade() {
             try {
-                const userId = getUserId();
-                const response = await fetch('/api/upgrade', {
+                const response = await fetch(`${baseUrl}/api/upgrade`, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        user_id: userId
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: user.id })
                 });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 
                 const result = await response.json();
                 
                 if (result.success) {
-                    currentPlayerData = result.player;
                     updateDisplay(result.player);
-                    showNotification(`Корабль улучшен до уровня ${result.new_level}! 🚀`);
+                    showMessage(`Корабль улучшен до уровня ${result.new_level}! 🚀`, 'success');
                 } else {
-                    showNotification(result.error || 'Недостаточно кредитов');
+                    showMessage(result.error, 'error');
                 }
             } catch (error) {
                 console.error('Upgrade error:', error);
-                showNotification('Ошибка улучшения');
+                showMessage('Ошибка улучшения: ' + error.message, 'error');
             }
         }
         
-        // Обновление интерфейса
-        function updateDisplay(playerData) {
-            document.getElementById('credits').textContent = playerData.credits;
-            document.getElementById('shipLevel').textContent = playerData.ship_level;
-            document.getElementById('ironCount').textContent = playerData.resources.iron;
-            document.getElementById('goldCount').textContent = playerData.resources.gold;
-            document.getElementById('crystalsCount').textContent = playerData.resources.crystals;
+        function updateDisplay(player) {
+            document.getElementById('credits').textContent = player.credits;
+            document.getElementById('shipLevel').textContent = player.ship_level;
+            document.getElementById('iron').textContent = player.resources.iron;
+            document.getElementById('gold').textContent = player.resources.gold;
+            document.getElementById('crystals').textContent = player.resources.crystals;
         }
         
-        // Показать уведомление
-        function showNotification(message) {
-            const notification = document.getElementById('notification');
-            notification.textContent = message;
-            notification.style.display = 'block';
-            
-            setTimeout(() => {
-                notification.style.display = 'none';
-            }, 3000);
+        function showMessage(text, type) {
+            const messageEl = document.getElementById('message');
+            messageEl.textContent = text;
+            messageEl.className = type || '';
+            setTimeout(() => messageEl.textContent = '', 3000);
         }
         
-        // Показать/скрыть загрузку
-        function showLoading(show) {
-            document.getElementById('loading').style.display = show ? 'block' : 'none';
-        }
-        
-        // Загружаем данные при старте
+        // Загружаем игру при старте
         document.addEventListener('DOMContentLoaded', function() {
-            loadPlayerData();
+            loadGame();
         });
     </script>
 </body>
