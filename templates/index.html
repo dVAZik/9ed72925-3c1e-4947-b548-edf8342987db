@@ -1,220 +1,814 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Cosmic Miner</title>
+    <title>Crypto Exchange Pro</title>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: Arial; 
-            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
-            color: white; 
-            padding: 20px;
-            min-height: 100vh;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        .container { max-width: 400px; margin: 0 auto; }
-        .header { text-align: center; margin-bottom: 20px; }
-        .card { 
-            background: rgba(255,255,255,0.1); 
-            border-radius: 15px; 
-            padding: 15px; 
+        
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #111111;
+            --bg-tertiary: #1a1a1a;
+            --border: #2a2a2a;
+            --text-primary: #ffffff;
+            --text-secondary: #888888;
+            --text-accent: #00ff88;
+            --positive: #00ff88;
+            --negative: #ff4444;
+            --btc: #f7931a;
+            --eth: #627eea;
+            --sol: #00ffbd;
+            --ada: #0033ad;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+            font-weight: 400;
+        }
+        
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 0;
+        }
+        
+        /* Header */
+        .header {
+            padding: 20px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .exchange-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 15px;
         }
-        .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .resources { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 15px 0; }
-        .btn { 
-            background: #4CAF50; 
-            border: none; 
-            border-radius: 10px; 
-            color: white; 
-            padding: 15px; 
-            font-size: 16px; 
-            cursor: pointer; 
-            width: 100%;
-            margin: 5px 0;
+        
+        .logo {
+            font-size: 1.4em;
+            font-weight: 600;
+            letter-spacing: -0.5px;
         }
-        .btn:hover { opacity: 0.9; }
-        .btn-mine { background: #FF6B6B; }
-        .btn-sell { background: #4ECDC4; }
-        .btn-upgrade { background: #FFD93D; color: black; }
-        .resource { text-align: center; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 10px; }
-        #message { margin-top: 20px; text-align: center; padding: 10px; border-radius: 10px; }
-        .success { background: rgba(76, 175, 80, 0.3); }
-        .error { background: rgba(244, 67, 54, 0.3); }
+        
+        .balance-card {
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid var(--border);
+        }
+        
+        .balance-amount {
+            font-size: 1.8em;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .balance-label {
+            font-size: 0.85em;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Market Ticker */
+        .market-ticker {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1px;
+            background: var(--border);
+            margin: 0 20px 20px;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+        
+        .ticker-item {
+            background: var(--bg-secondary);
+            padding: 12px 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: background 0.2s;
+            border: none;
+        }
+        
+        .ticker-item.active {
+            background: var(--bg-tertiary);
+        }
+        
+        .ticker-item:hover {
+            background: var(--bg-tertiary);
+        }
+        
+        .ticker-symbol {
+            font-weight: 600;
+            font-size: 0.9em;
+            margin-bottom: 2px;
+        }
+        
+        .ticker-price {
+            font-size: 0.8em;
+            font-weight: 500;
+        }
+        
+        .ticker-change {
+            font-size: 0.75em;
+            font-weight: 500;
+        }
+        
+        .change-positive { color: var(--positive); }
+        .change-negative { color: var(--negative); }
+        
+        /* Trading View */
+        .trading-view {
+            padding: 0 20px 20px;
+        }
+        
+        .chart-container {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            border: 1px solid var(--border);
+            height: 200px;
+        }
+        
+        /* Order Book */
+        .order-book {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .order-column {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 12px;
+            border: 1px solid var(--border);
+        }
+        
+        .order-header {
+            font-size: 0.8em;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .bids .order-header { color: var(--positive); }
+        .asks .order-header { color: var(--negative); }
+        
+        .order-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8em;
+            padding: 4px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .order-row:last-child {
+            border-bottom: none;
+        }
+        
+        /* Trading Panel */
+        .trading-panel {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border);
+        }
+        
+        .order-type-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        
+        .order-type-btn {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: center;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .order-type-btn.active {
+            background: var(--bg-primary);
+            border-color: var(--text-accent);
+            color: var(--text-accent);
+        }
+        
+        .buy-btn.active {
+            border-color: var(--positive);
+            color: var(--positive);
+        }
+        
+        .sell-btn.active {
+            border-color: var(--negative);
+            color: var(--negative);
+        }
+        
+        .input-group {
+            margin-bottom: 12px;
+        }
+        
+        .input-label {
+            display: block;
+            font-size: 0.8em;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .input-field {
+            width: 100%;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            color: var(--text-primary);
+            font-size: 1em;
+            transition: border-color 0.2s;
+        }
+        
+        .input-field:focus {
+            outline: none;
+            border-color: var(--text-accent);
+        }
+        
+        .action-btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-top: 8px;
+        }
+        
+        .buy-action {
+            background: var(--positive);
+            color: #000;
+        }
+        
+        .sell-action {
+            background: var(--negative);
+            color: #fff;
+        }
+        
+        .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* Portfolio */
+        .portfolio-section {
+            padding: 0 20px 20px;
+        }
+        
+        .section-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-primary);
+        }
+        
+        .portfolio-grid {
+            display: grid;
+            gap: 8px;
+        }
+        
+        .portfolio-item {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 12px 16px;
+            border: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .asset-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .asset-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.8em;
+        }
+        
+        .btc-bg { background: var(--btc); }
+        .eth-bg { background: var(--eth); }
+        .sol-bg { background: var(--sol); }
+        .ada-bg { background: var(--ada); }
+        
+        .asset-details {
+            line-height: 1.3;
+        }
+        
+        .asset-symbol {
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+        
+        .asset-amount {
+            font-size: 0.8em;
+            color: var(--text-secondary);
+        }
+        
+        .asset-value {
+            text-align: right;
+            line-height: 1.3;
+        }
+        
+        .value-amount {
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+        
+        .value-usd {
+            font-size: 0.8em;
+            color: var(--text-secondary);
+        }
+        
+        /* Notifications */
+        .notification {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            z-index: 1000;
+            display: none;
+            font-size: 0.9em;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div class="container">
+        <!-- Header -->
         <div class="header">
-            <h1>🚀 Cosmic Miner</h1>
-            <p>Космическая добыча ресурсов</p>
-        </div>
-        
-        <div class="card">
-            <h3>Статистика:</h3>
-            <div class="stats">
-                <div>💰 Кредиты:</div>
-                <div id="credits">100</div>
-                <div>🚀 Уровень корабля:</div>
-                <div id="shipLevel">1</div>
+            <div class="exchange-header">
+                <div class="logo">CRYPTO EXCHANGE</div>
+                <div class="user-balance">
+                    <div class="balance-amount" id="totalValue">$10,000.00</div>
+                    <div class="balance-label">Total Balance</div>
+                </div>
+            </div>
+            
+            <div class="balance-card">
+                <div style="display: flex; justify-content: space-between;">
+                    <div>
+                        <div class="balance-label">Available</div>
+                        <div class="balance-amount" id="availableBalance">$10,000.00</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div class="balance-label">24h P&L</div>
+                        <div class="balance-amount" id="profitLoss" style="color: var(--positive);">+$0.00</div>
+                    </div>
+                </div>
             </div>
         </div>
         
-        <div class="card">
-            <h3>Ресурсы:</h3>
-            <div class="resources">
-                <div class="resource">🪨 Железо: <span id="iron">0</span></div>
-                <div class="resource">📦 Золото: <span id="gold">0</span></div>
-                <div class="resource">💎 Кристаллы: <span id="crystals">0</span></div>
+        <!-- Market Ticker -->
+        <div class="market-ticker" id="marketTicker">
+            <!-- Ticker items will be populated by JavaScript -->
+        </div>
+        
+        <!-- Trading View -->
+        <div class="trading-view">
+            <div class="chart-container">
+                <canvas id="priceChart"></canvas>
+            </div>
+            
+            <div class="order-book">
+                <div class="order-column bids">
+                    <div class="order-header">Bids</div>
+                    <div id="bidsList">
+                        <!-- Bids will be populated by JavaScript -->
+                    </div>
+                </div>
+                <div class="order-column asks">
+                    <div class="order-header">Asks</div>
+                    <div id="asksList">
+                        <!-- Asks will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="trading-panel">
+                <div class="order-type-selector">
+                    <button class="order-type-btn buy-btn active" onclick="setOrderType('buy')">BUY</button>
+                    <button class="order-type-btn sell-btn" onclick="setOrderType('sell')">SELL</button>
+                </div>
+                
+                <div class="input-group">
+                    <label class="input-label">Amount</label>
+                    <input type="number" class="input-field" id="orderAmount" placeholder="0.00" step="0.001" min="0">
+                </div>
+                
+                <div class="input-group">
+                    <label class="input-label">Price Type</label>
+                    <select class="input-field" id="priceType" onchange="toggleLimitPrice()">
+                        <option value="market">Market</option>
+                        <option value="limit">Limit</option>
+                    </select>
+                </div>
+                
+                <div class="input-group" id="limitPriceGroup" style="display: none;">
+                    <label class="input-label">Limit Price ($)</label>
+                    <input type="number" class="input-field" id="limitPrice" placeholder="0.00" step="0.01" min="0">
+                </div>
+                
+                <div class="input-group">
+                    <label class="input-label">Total</label>
+                    <input type="text" class="input-field" id="orderTotal" placeholder="$0.00" readonly>
+                </div>
+                
+                <button class="action-btn buy-action" id="buyButton" onclick="placeOrder('buy')">BUY</button>
+                <button class="action-btn sell-action" id="sellButton" onclick="placeOrder('sell')" style="display: none;">SELL</button>
             </div>
         </div>
         
-        <button class="btn btn-mine" onclick="mine()">⛏ Добывать ресурсы</button>
-        <button class="btn btn-upgrade" onclick="upgrade()">🛠 Улучшить корабль</button>
-        
-        <button class="btn btn-sell" onclick="sell('iron')">🛒 Продать железо (2💰)</button>
-        <button class="btn btn-sell" onclick="sell('gold')">🛒 Продать золото (5💰)</button>
-        <button class="btn btn-sell" onclick="sell('crystals')">🛒 Продать кристаллы (15💰)</button>
-        
-        <div id="message"></div>
+        <!-- Portfolio -->
+        <div class="portfolio-section">
+            <div class="section-title">Portfolio</div>
+            <div class="portfolio-grid" id="portfolioGrid">
+                <!-- Portfolio items will be populated by JavaScript -->
+            </div>
+        </div>
     </div>
 
+    <div class="notification" id="notification"></div>
+    <div class="loading" id="loading">Loading market data...</div>
+
     <script>
-        // Для тестирования
-        let user = { id: 'test_user_' + Math.random().toString(36).substr(2, 9) };
+        // Глобальные переменные
+        let currentPlayerData = null;
+        let priceChart = null;
+        let selectedSymbol = 'BTC';
+        let currentOrderType = 'buy';
         let baseUrl = window.location.origin;
         
-        // Если в Telegram, используем реальные данные
-        if (window.Telegram && Telegram.WebApp) {
-            const tg = window.Telegram.WebApp;
-            user = tg.initDataUnsafe.user || { id: 'telegram_user' };
-            tg.expand();
-            console.log('Telegram Web App initialized');
+        const CRYPTO_CONFIG = {
+            'BTC': { name: 'Bitcoin', color: '#f7931a' },
+            'ETH': { name: 'Ethereum', color: '#627eea' },
+            'SOL': { name: 'Solana', color: '#00ffbd' },
+            'ADA': { name: 'Cardano', color: '#0033ad' }
+        };
+        
+        // Инициализация
+        function initTelegram() {
+            if (window.Telegram && Telegram.WebApp) {
+                const tg = window.Telegram.WebApp;
+                tg.expand();
+                tg.enableClosingConfirmation();
+                return tg.initDataUnsafe.user;
+            }
+            return null;
         }
         
-        console.log('Base URL:', baseUrl);
-        console.log('User ID:', user.id);
+        function getUserId() {
+            const telegramUser = initTelegram();
+            if (telegramUser && telegramUser.id) {
+                return telegramUser.id.toString();
+            }
+            return 'trader_' + Math.random().toString(36).substr(2, 9);
+        }
         
-        async function loadGame() {
+        // Загрузка данных
+        async function loadMarketData() {
+            showLoading(true);
             try {
-                showMessage('Загрузка игры...', 'success');
-                const response = await fetch(`${baseUrl}/api/player/${user.id}`);
+                const userId = getUserId();
+                const response = await fetch(`${baseUrl}/api/player/${userId}`);
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                if (!response.ok) throw new Error('Network error');
                 
-                const data = await response.json();
-                updateDisplay(data);
-                showMessage('Игра загружена!', 'success');
+                const marketData = await response.json();
+                currentPlayerData = marketData;
+                updateDisplay(marketData);
+                updateChart();
+                showNotification('Market data updated');
             } catch (error) {
-                console.error('Error loading game:', error);
-                showMessage('Ошибка загрузки: ' + error.message, 'error');
+                console.error('Error:', error);
+                showNotification('Connection error');
+            } finally {
+                showLoading(false);
             }
         }
         
-        async function mine() {
-            try {
-                showMessage('Добываем ресурсы...', 'success');
-                const response = await fetch(`${baseUrl}/api/mine`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: user.id })
-                });
+        // Обновление интерфейса
+        function updateDisplay(data) {
+            // Обновляем балансы
+            document.getElementById('totalValue').textContent = `$${data.total_value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            document.getElementById('availableBalance').textContent = `$${data.balance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            
+            const profit = data.total_value - 10000;
+            const profitElement = document.getElementById('profitLoss');
+            profitElement.textContent = `${profit >= 0 ? '+' : ''}$${profit.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            profitElement.style.color = profit >= 0 ? 'var(--positive)' : 'var(--negative)';
+            
+            // Обновляем тикер
+            updateTicker(data);
+            
+            // Обновляем стакан цен
+            updateOrderBook(data);
+            
+            // Обновляем портфель
+            updatePortfolio(data);
+            
+            // Обновляем расчет ордера
+            updateOrderCalculation();
+        }
+        
+        function updateTicker(data) {
+            const ticker = document.getElementById('marketTicker');
+            ticker.innerHTML = '';
+            
+            for (const [symbol, config] of Object.entries(CRYPTO_CONFIG)) {
+                const price = data.current_prices[symbol];
+                const history = data.price_history[symbol];
+                const change = history.length > 1 ? ((price - history[history.length - 2]) / history[history.length - 2]) * 100 : 0;
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                const tickerItem = document.createElement('button');
+                tickerItem.className = `ticker-item ${selectedSymbol === symbol ? 'active' : ''}`;
+                tickerItem.onclick = () => selectSymbol(symbol);
                 
-                const result = await response.json();
+                tickerItem.innerHTML = `
+                    <div class="ticker-symbol">${symbol}</div>
+                    <div class="ticker-price">$${price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                    <div class="ticker-change ${change >= 0 ? 'change-positive' : 'change-negative'}">
+                        ${change >= 0 ? '+' : ''}${change.toFixed(2)}%
+                    </div>
+                `;
                 
-                if (result.success) {
-                    updateDisplay(result.player);
-                    showMessage(`Добыто: +${result.resources.iron}🪨 +${result.resources.gold}📦 +${result.resources.crystals}💎`, 'success');
-                } else {
-                    showMessage(result.error, 'error');
-                }
-            } catch (error) {
-                console.error('Mining error:', error);
-                showMessage('Ошибка добычи: ' + error.message, 'error');
+                ticker.appendChild(tickerItem);
             }
         }
         
-        async function sell(resourceType) {
+        function updateOrderBook(data) {
+            const orderBook = data.order_books[selectedSymbol];
+            const bidsList = document.getElementById('bidsList');
+            const asksList = document.getElementById('asksList');
+            
+            bidsList.innerHTML = '';
+            asksList.innerHTML = '';
+            
+            // Показываем до 5 лучших заявок
+            orderBook.bids.slice(0, 5).forEach(bid => {
+                const row = document.createElement('div');
+                row.className = 'order-row';
+                row.innerHTML = `
+                    <span>$${bid.price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                    <span>${bid.amount}</span>
+                `;
+                bidsList.appendChild(row);
+            });
+            
+            orderBook.asks.slice(0, 5).forEach(ask => {
+                const row = document.createElement('div');
+                row.className = 'order-row';
+                row.innerHTML = `
+                    <span>$${ask.price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                    <span>${ask.amount}</span>
+                `;
+                asksList.appendChild(row);
+            });
+        }
+        
+        function updatePortfolio(data) {
+            const portfolioGrid = document.getElementById('portfolioGrid');
+            portfolioGrid.innerHTML = '';
+            
+            for (const [symbol, config] of Object.entries(CRYPTO_CONFIG)) {
+                const amount = data.portfolio[symbol];
+                const price = data.current_prices[symbol];
+                const value = amount * price;
+                
+                if (amount > 0) {
+                    const portfolioItem = document.createElement('div');
+                    portfolioItem.className = 'portfolio-item';
+                    
+                    portfolioItem.innerHTML = `
+                        <div class="asset-info">
+                            <div class="asset-icon ${symbol.toLowerCase()}-bg">${symbol}</div>
+                            <div class="asset-details">
+                                <div class="asset-symbol">${config.name}</div>
+                                <div class="asset-amount">${amount.toFixed(4)} ${symbol}</div>
+                            </div>
+                        </div>
+                        <div class="asset-value">
+                            <div class="value-amount">$${value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                            <div class="value-usd">@ $${price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                        </div>
+                    `;
+                    
+                    portfolioGrid.appendChild(portfolioItem);
+                }
+            }
+        }
+        
+        // График
+        function updateChart() {
+            if (!currentPlayerData) return;
+            
+            const ctx = document.getElementById('priceChart').getContext('2d');
+            const history = currentPlayerData.price_history[selectedSymbol];
+            
+            if (priceChart) priceChart.destroy();
+            
+            priceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Array.from({length: history.length}, (_, i) => ''),
+                    datasets: [{
+                        data: history,
+                        borderColor: CRYPTO_CONFIG[selectedSymbol].color,
+                        backgroundColor: CRYPTO_CONFIG[selectedSymbol].color + '20',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: {
+                            display: false
+                        },
+                        x: {
+                            display: false
+                        }
+                    },
+                    interaction: { intersect: false },
+                    elements: { point: { radius: 0 } }
+                }
+            });
+        }
+        
+        // Торговля
+        function setOrderType(type) {
+            currentOrderType = type;
+            
+            document.querySelectorAll('.order-type-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`.${type}-btn`).classList.add('active');
+            
+            document.getElementById('buyButton').style.display = type === 'buy' ? 'block' : 'none';
+            document.getElementById('sellButton').style.display = type === 'sell' ? 'block' : 'none';
+            
+            updateOrderCalculation();
+        }
+        
+        function selectSymbol(symbol) {
+            selectedSymbol = symbol;
+            document.querySelectorAll('.ticker-item').forEach(item => item.classList.remove('active'));
+            event.target.closest('.ticker-item').classList.add('active');
+            updateChart();
+            updateOrderBook(currentPlayerData);
+            updateOrderCalculation();
+        }
+        
+        function toggleLimitPrice() {
+            const priceType = document.getElementById('priceType').value;
+            document.getElementById('limitPriceGroup').style.display = priceType === 'limit' ? 'block' : 'none';
+            updateOrderCalculation();
+        }
+        
+        function updateOrderCalculation() {
+            const amount = parseFloat(document.getElementById('orderAmount').value) || 0;
+            const priceType = document.getElementById('priceType').value;
+            const limitPrice = parseFloat(document.getElementById('limitPrice').value) || 0;
+            
+            let total = 0;
+            
+            if (priceType === 'market' && currentPlayerData) {
+                const currentPrice = currentPlayerData.current_prices[selectedSymbol];
+                total = amount * currentPrice;
+            } else if (priceType === 'limit') {
+                total = amount * limitPrice;
+            }
+            
+            document.getElementById('orderTotal').value = `$${total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+        }
+        
+        async function placeOrder(type) {
+            const amount = parseFloat(document.getElementById('orderAmount').value);
+            const priceType = document.getElementById('priceType').value;
+            const limitPrice = parseFloat(document.getElementById('limitPrice').value) || 0;
+            
+            if (!amount || amount <= 0) {
+                showNotification('Enter valid amount');
+                return;
+            }
+            
+            if (priceType === 'limit' && (!limitPrice || limitPrice <= 0)) {
+                showNotification('Enter valid limit price');
+                return;
+            }
+            
             try {
-                const response = await fetch(`${baseUrl}/api/sell`, {
+                const userId = getUserId();
+                const response = await fetch(`${baseUrl}/api/place_order`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        user_id: user.id, 
-                        resource_type: resourceType 
+                    body: JSON.stringify({
+                        user_id: userId,
+                        symbol: selectedSymbol,
+                        type: type,
+                        amount: amount,
+                        price_type: priceType,
+                        limit_price: limitPrice
                     })
                 });
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
                 const result = await response.json();
                 
                 if (result.success) {
+                    currentPlayerData = result.player;
                     updateDisplay(result.player);
-                    showMessage(`Продано! +${result.income}💰`, 'success');
+                    showNotification(result.message);
+                    
+                    // Сброс формы
+                    document.getElementById('orderAmount').value = '';
+                    document.getElementById('limitPrice').value = '';
+                    document.getElementById('orderTotal').value = '$0.00';
                 } else {
-                    showMessage(result.error, 'error');
+                    showNotification(result.error);
                 }
             } catch (error) {
-                console.error('Selling error:', error);
-                showMessage('Ошибка продажи: ' + error.message, 'error');
+                console.error('Order error:', error);
+                showNotification('Order failed');
             }
         }
         
-        async function upgrade() {
-            try {
-                const response = await fetch(`${baseUrl}/api/upgrade`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_id: user.id })
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    updateDisplay(result.player);
-                    showMessage(`Корабль улучшен до уровня ${result.new_level}! 🚀`, 'success');
-                } else {
-                    showMessage(result.error, 'error');
-                }
-            } catch (error) {
-                console.error('Upgrade error:', error);
-                showMessage('Ошибка улучшения: ' + error.message, 'error');
-            }
+        // Утилиты
+        function showNotification(message) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.style.display = 'block';
+            setTimeout(() => notification.style.display = 'none', 3000);
         }
         
-        function updateDisplay(player) {
-            document.getElementById('credits').textContent = player.credits;
-            document.getElementById('shipLevel').textContent = player.ship_level;
-            document.getElementById('iron').textContent = player.resources.iron;
-            document.getElementById('gold').textContent = player.resources.gold;
-            document.getElementById('crystals').textContent = player.resources.crystals;
+        function showLoading(show) {
+            document.getElementById('loading').style.display = show ? 'block' : 'none';
         }
         
-        function showMessage(text, type) {
-            const messageEl = document.getElementById('message');
-            messageEl.textContent = text;
-            messageEl.className = type || '';
-            setTimeout(() => messageEl.textContent = '', 3000);
-        }
+        // Слушатели событий
+        document.getElementById('orderAmount').addEventListener('input', updateOrderCalculation);
+        document.getElementById('limitPrice').addEventListener('input', updateOrderCalculation);
         
-        // Загружаем игру при старте
+        // Авто-обновление
+        setInterval(loadMarketData, 10000);
+        
+        // Инициализация
         document.addEventListener('DOMContentLoaded', function() {
-            loadGame();
+            loadMarketData();
         });
     </script>
 </body>
