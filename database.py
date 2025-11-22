@@ -11,6 +11,7 @@ class Player(Base):
     __tablename__ = 'players'
     
     user_id = Column(String, primary_key=True)
+    username = Column(String, default="Trader")
     balance = Column(Float, default=10000.0)
     portfolio = Column(JSON, default={})
     portfolio_value = Column(Float, default=0.0)
@@ -41,6 +42,7 @@ class Database:
         """Создать нового игрока"""
         player = Player(
             user_id=user_id,
+            username=player_data.get('username', 'Trader'),
             balance=player_data.get('balance', 10000.0),
             portfolio=json.dumps(player_data.get('portfolio', {})),
             portfolio_value=player_data.get('portfolio_value', 0.0),
@@ -59,6 +61,7 @@ class Database:
         """Обновить данные игрока"""
         player = self.get_player(user_id)
         if player:
+            player.username = player_data.get('username', player.username)
             player.balance = player_data.get('balance', player.balance)
             player.portfolio = json.dumps(player_data.get('portfolio', json.loads(player.portfolio)))
             player.portfolio_value = player_data.get('portfolio_value', player.portfolio_value)
@@ -86,6 +89,7 @@ class Database:
         result = {}
         for player in players:
             result[player.user_id] = {
+                'username': player.username,
                 'balance': player.balance,
                 'portfolio': json.loads(player.portfolio),
                 'portfolio_value': player.portfolio_value,
@@ -104,6 +108,7 @@ class Database:
         player = self.get_player(user_id)
         if player:
             return {
+                'username': player.username,
                 'balance': player.balance,
                 'portfolio': json.loads(player.portfolio),
                 'portfolio_value': player.portfolio_value,
