@@ -574,12 +574,38 @@ def admin_stats_route():
     total_portfolio = sum(player['portfolio_value'] for player in players.values())
     total_wealth = total_balance + total_portfolio
     
+    # Статистика по криптовалютам
+    crypto_stats = {}
+    for symbol in CRYPTOS.keys():
+        total_owned = sum(player.get('portfolio', {}).get(symbol, 0) for player in players.values())
+        crypto_stats[symbol] = {
+            'total_owned': total_owned,
+            'players_owning': sum(1 for player in players.values() if player.get('portfolio', {}).get(symbol, 0) > 0)
+        }
+    
+    # Топ игроков
+    top_players = sorted(
+        [(user_id, player) for user_id, player in players.items()],
+        key=lambda x: x[1].get('total_value', 0),
+        reverse=True
+    )[:10]
+    
     stats = {
         "total_players": total_players,
         "total_balance": total_balance,
         "total_portfolio_value": total_portfolio,
         "total_wealth": total_wealth,
         "average_balance": total_balance / total_players if total_players > 0 else 0,
+        "crypto_stats": crypto_stats,
+        "top_players": [
+            {
+                "user_id": user_id,
+                "username": player.get('username', user_id),
+                "total_value": player.get('total_value', 0),
+                "balance": player.get('balance', 0)
+            }
+            for user_id, player in top_players
+        ],
         "last_updated": datetime.now().isoformat()
     }
     
