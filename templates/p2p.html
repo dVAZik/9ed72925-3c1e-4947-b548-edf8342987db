@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>P2P Market - Crypto Exchange</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #111111;
+            --bg-tertiary: #1a1a1a;
+            --border: #2a2a2a;
+            --text-primary: #ffffff;
+            --text-secondary: #888888;
+            --text-accent: #00ff88;
+            --positive: #00ff88;
+            --negative: #ff4444;
+            --buy-color: #00ff88;
+            --sell-color: #ff4444;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+            font-weight: 400;
+        }
+        
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+        
+        .logo {
+            font-size: 1.8em;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1em;
+        }
+        
+        .section {
+            background: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+        }
+        
+        .section-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--text-accent);
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 15px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 4px;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        
+        .tab.active {
+            background: var(--bg-secondary);
+            font-weight: 600;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        .input-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+        
+        .input-field {
+            width: 100%;
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 1em;
+        }
+        
+        .input-field:focus {
+            outline: none;
+            border-color: var(--text-accent);
+        }
+        
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+        }
+        
+        .btn-buy {
+            background: var(--buy-color);
+            color: #000;
+        }
+        
+        .btn-sell {
+            background: var(--sell-color);
+            color: #fff;
+        }
+        
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .orders-list {
+            display: grid;
+            gap: 10px;
+        }
+        
+        .order-card {
+            background: var(--bg-tertiary);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .order-symbol {
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+        
+        .order-type {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+        
+        .type-buy {
+            background: var(--buy-color);
+            color: #000;
+        }
+        
+        .type-sell {
+            background: var(--sell-color);
+            color: #fff;
+        }
+        
+        .order-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 0.9em;
+        }
+        
+        .order-price {
+            font-weight: 600;
+            color: var(--text-accent);
+        }
+        
+        .order-amount {
+            color: var(--text-secondary);
+        }
+        
+        .order-seller {
+            grid-column: 1 / -1;
+            color: var(--text-secondary);
+            font-size: 0.8em;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            z-index: 1000;
+            display: none;
+        }
+        
+        .notification.success {
+            border-color: var(--positive);
+        }
+        
+        .notification.error {
+            border-color: var(--negative);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-secondary);
+        }
+        
+        .compact-number {
+            font-feature-settings: 'tnum' 1;
+            font-variant-numeric: tabular-nums;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🤝 P2P Market</div>
+            <div class="subtitle">Trade directly with other players</div>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">Create Order</div>
+            <div class="tabs">
+                <div class="tab active" id="buyTab" onclick="setOrderType('buy')">Buy</div>
+                <div class="tab" id="sellTab" onclick="setOrderType('sell')">Sell</div>
+            </div>
+            
+            <div class="input-group">
+                <label class="input-label">Cryptocurrency</label>
+                <select class="input-field" id="orderSymbol">
+                    <option value="BTC">₿ Bitcoin (BTC)</option>
+                    <option value="ETH">🔷 Ethereum (ETH)</option>
+                    <option value="BNB">💠 Binance Coin (BNB)</option>
+                    <option value="XRP">⚡ Ripple (XRP)</option>
+                    <option value="ADA">🃏 Cardano (ADA)</option>
+                    <option value="DOGE">🐕 Dogecoin (DOGE)</option>
+                    <option value="SOL">🔆 Solana (SOL)</option>
+                    <option value="DOT">🔴 Polkadot (DOT)</option>
+                </select>
+            </div>
+            
+            <div class="input-group">
+                <label class="input-label">Amount</label>
+                <input type="number" class="input-field" id="orderAmount" placeholder="0.00" step="0.001" min="0">
+            </div>
+            
+            <div class="input-group">
+                <label class="input-label">Price per unit ($)</label>
+                <input type="number" class="input-field" id="orderPrice" placeholder="0.00" step="0.01" min="0">
+            </div>
+            
+            <div class="input-group">
+                <label class="input-label">Total: $<span id="orderTotal">0.00</span></label>
+            </div>
+            
+            <button class="btn" id="createOrderBtn" onclick="createOrder()">Create Buy Order</button>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">Active Orders</div>
+            <div class="input-group">
+                <label class="input-label">Filter by cryptocurrency</label>
+                <select class="input-field" id="filterSymbol" onchange="loadOrders()">
+                    <option value="">All cryptocurrencies</option>
+                    <option value="BTC">₿ Bitcoin</option>
+                    <option value="ETH">🔷 Ethereum</option>
+                    <option value="BNB">💠 Binance Coin</option>
+                    <option value="XRP">⚡ Ripple</option>
+                    <option value="ADA">🃏 Cardano</option>
+                    <option value="DOGE">🐕 Dogecoin</option>
+                    <option value="SOL">🔆 Solana</option>
+                    <option value="DOT">🔴 Polkadot</option>
+                </select>
+            </div>
+            
+            <div class="orders-list" id="ordersList">
+                <div class="loading">Loading orders...</div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <div class="section-title">My Orders</div>
+            <button class="btn btn-secondary" onclick="loadMyOrders()">Refresh My Orders</button>
+            <div class="orders-list" id="myOrdersList">
+                <div class="loading">Click to load your orders</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <script>
+        let currentUserId = '';
+        let currentOrderType = 'buy';
+        
+        // Инициализация
+        function initTelegram() {
+            if (window.Telegram && Telegram.WebApp) {
+                const tg = window.Telegram.WebApp;
+                tg.expand();
+                currentUserId = tg.initDataUnsafe.user?.id?.toString() || 'test_user_' + Math.random().toString(36).substr(2, 9);
+                console.log('User ID:', currentUserId);
+            } else {
+                currentUserId = 'web_user_' + Math.random().toString(36).substr(2, 9);
+            }
+        }
+        
+        // Форматирование чисел
+        function formatNumber(num, decimals = 2) {
+            if (num === 0 || !num) return '0';
+            const absNum = Math.abs(num);
+            if (absNum >= 1e12) return (num / 1e12).toFixed(decimals) + 'T';
+            else if (absNum >= 1e9) return (num / 1e9).toFixed(decimals) + 'B';
+            else if (absNum >= 1e6) return (num / 1e6).toFixed(decimals) + 'M';
+            else if (absNum >= 1e3) return (num / 1e3).toFixed(decimals) + 'K';
+            else return num.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+        }
+        
+        function formatCurrency(amount) {
+            return '$' + formatNumber(amount);
+        }
+        
+        // Уведомления
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.style.display = 'block';
+            setTimeout(() => notification.style.display = 'none', 3000);
+        }
+        
+        // Установка типа ордера
+        function setOrderType(type) {
+            currentOrderType = type;
+            document.getElementById('buyTab').classList.toggle('active', type === 'buy');
+            document.getElementById('sellTab').classList.toggle('active', type === 'sell');
+            
+            const btn = document.getElementById('createOrderBtn');
+            btn.textContent = type === 'buy' ? 'Create Buy Order' : 'Create Sell Order';
+            btn.className = type === 'buy' ? 'btn btn-buy' : 'btn btn-sell';
+            
+            updateOrderTotal();
+        }
+        
+        // Обновление общей суммы
+        function updateOrderTotal() {
+            const amount = parseFloat(document.getElementById('orderAmount').value) || 0;
+            const price = parseFloat(document.getElementById('orderPrice').value) || 0;
+            const total = amount * price;
+            document.getElementById('orderTotal').textContent = formatNumber(total);
+        }
+        
+        // Создание ордера
+        async function createOrder() {
+            const symbol = document.getElementById('orderSymbol').value;
+            const amount = parseFloat(document.getElementById('orderAmount').value);
+            const price = parseFloat(document.getElementById('orderPrice').value);
+            
+            if (!amount || amount <= 0) {
+                showNotification('Please enter valid amount', 'error');
+                return;
+            }
+            
+            if (!price || price <= 0) {
+                showNotification('Please enter valid price', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/p2p/create_order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: currentUserId,
+                        symbol: symbol,
+                        amount: amount,
+                        price: price,
+                        type: currentOrderType
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification(result.message);
+                    // Сброс формы
+                    document.getElementById('orderAmount').value = '';
+                    document.getElementById('orderPrice').value = '';
+                    document.getElementById('orderTotal').textContent = '0.00';
+                    // Перезагрузка ордеров
+                    loadOrders();
+                    loadMyOrders();
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Failed to create order: ' + error.message, 'error');
+            }
+        }
+        
+        // Загрузка активных ордеров
+        async function loadOrders() {
+            const symbol = document.getElementById('filterSymbol').value;
+            let url = '/api/p2p/orders';
+            if (symbol) {
+                url += `?symbol=${symbol}`;
+            }
+            
+            try {
+                const response = await fetch(url);
+                const result = await response.json();
+                
+                if (result.success) {
+                    const ordersList = document.getElementById('ordersList');
+                    ordersList.innerHTML = '';
+                    
+                    if (result.orders.length === 0) {
+                        ordersList.innerHTML = '<div class="loading">No active orders found</div>';
+                        return;
+                    }
+                    
+                    result.orders.forEach(order => {
+                        const orderCard = document.createElement('div');
+                        orderCard.className = 'order-card';
+                        
+                        orderCard.innerHTML = `
+                            <div class="order-header">
+                                <div class="order-symbol">${order.symbol}</div>
+                                <div class="order-type ${order.type === 'buy' ? 'type-buy' : 'type-sell'}">
+                                    ${order.type.toUpperCase()}
+                                </div>
+                            </div>
+                            <div class="order-details">
+                                <div>Amount: <span class="compact-number">${formatNumber(order.amount, 4)}</span></div>
+                                <div>Price: <span class="order-price compact-number">${formatCurrency(order.price)}</span></div>
+                                <div>Total: <span class="compact-number">${formatCurrency(order.total)}</span></div>
+                                <div class="order-seller">Seller: ${order.seller_username}</div>
+                            </div>
+                            ${order.seller_id !== currentUserId ? `
+                                <button class="btn ${order.type === 'buy' ? 'btn-sell' : 'btn-buy'}" 
+                                        onclick="executeTrade(${order.id})" 
+                                        style="margin-top: 10px;">
+                                    ${order.type === 'buy' ? 'SELL to this buyer' : 'BUY from this seller'}
+                                </button>
+                            ` : ''}
+                        `;
+                        
+                        ordersList.appendChild(orderCard);
+                    });
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Failed to load orders: ' + error.message, 'error');
+            }
+        }
+        
+        // Исполнение сделки
+        async function executeTrade(orderId) {
+            if (!confirm('Are you sure you want to execute this trade?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/p2p/execute_trade', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        order_id: orderId,
+                        buyer_id: currentUserId
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification(result.message);
+                    loadOrders();
+                    loadMyOrders();
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Failed to execute trade: ' + error.message, 'error');
+            }
+        }
+        
+        // Загрузка моих ордеров
+        async function loadMyOrders() {
+            try {
+                const response = await fetch(`/api/p2p/my_orders?user_id=${currentUserId}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    const myOrdersList = document.getElementById('myOrdersList');
+                    myOrdersList.innerHTML = '';
+                    
+                    if (result.orders.length === 0) {
+                        myOrdersList.innerHTML = '<div class="loading">You have no orders</div>';
+                        return;
+                    }
+                    
+                    result.orders.forEach(order => {
+                        const orderCard = document.createElement('div');
+                        orderCard.className = 'order-card';
+                        
+                        orderCard.innerHTML = `
+                            <div class="order-header">
+                                <div class="order-symbol">${order.symbol}</div>
+                                <div class="order-type ${order.type === 'buy' ? 'type-buy' : 'type-sell'}">
+                                    ${order.type.toUpperCase()}
+                                </div>
+                                <div style="font-size: 0.8em; color: ${order.status === 'active' ? '#00ff88' : '#ff4444'}">
+                                    ${order.status}
+                                </div>
+                            </div>
+                            <div class="order-details">
+                                <div>Amount: <span class="compact-number">${formatNumber(order.amount, 4)}</span></div>
+                                <div>Price: <span class="order-price compact-number">${formatCurrency(order.price)}</span></div>
+                                <div>Total: <span class="compact-number">${formatCurrency(order.total)}</span></div>
+                                <div>Created: ${new Date(order.created_at).toLocaleString()}</div>
+                            </div>
+                            ${order.status === 'active' ? `
+                                <button class="btn btn-secondary" 
+                                        onclick="cancelOrder(${order.id})" 
+                                        style="margin-top: 10px;">
+                                    Cancel Order
+                                </button>
+                            ` : ''}
+                        `;
+                        
+                        myOrdersList.appendChild(orderCard);
+                    });
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Failed to load your orders: ' + error.message, 'error');
+            }
+        }
+        
+        // Отмена ордера
+        async function cancelOrder(orderId) {
+            if (!confirm('Are you sure you want to cancel this order?')) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/p2p/cancel_order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        order_id: orderId,
+                        user_id: currentUserId
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification(result.message);
+                    loadOrders();
+                    loadMyOrders();
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Failed to cancel order: ' + error.message, 'error');
+            }
+        }
+        
+        // Слушатели событий
+        document.getElementById('orderAmount').addEventListener('input', updateOrderTotal);
+        document.getElementById('orderPrice').addEventListener('input', updateOrderTotal);
+        
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', function() {
+            initTelegram();
+            loadOrders();
+        });
+    </script>
+</body>
+</html>
