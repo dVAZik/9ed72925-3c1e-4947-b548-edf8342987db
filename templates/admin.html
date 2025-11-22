@@ -429,6 +429,18 @@
             gap: 10px;
             margin-top: 10px;
         }
+        
+        .health-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .health-good { background: var(--positive); }
+        .health-warning { background: var(--warning); }
+        .health-critical { background: var(--negative); }
     </style>
 </head>
 <body>
@@ -593,15 +605,41 @@
                             </p>
                             <button class="btn btn-danger" onclick="systemAdvancedAction('clear_p2p_orders')">Clear All Orders</button>
                         </div>
+                        
+                        <div class="action-card">
+                            <div class="action-title">Generate Test Data</div>
+                            <p style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 10px;">
+                                Create 10 test players with random portfolios
+                            </p>
+                            <button class="btn btn-warning" onclick="systemAdvancedAction('generate_test_data')">Generate Test Data</button>
+                        </div>
+                        
+                        <div class="action-card">
+                            <div class="action-title">Fix Player Data</div>
+                            <p style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 10px;">
+                                Repair corrupted player data and add missing fields
+                            </p>
+                            <button class="btn btn-primary" onclick="systemAdvancedAction('fix_player_data')">Fix Data</button>
+                        </div>
                     </div>
                     
                     <div class="section-subtitle">📊 Advanced Statistics</div>
-                    <div class="action-card">
-                        <div class="action-title">Get Detailed Analytics</div>
-                        <p style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 10px;">
-                            Comprehensive system analytics including wealth distribution and asset statistics
-                        </p>
-                        <button class="btn btn-primary" onclick="systemAdvancedAction('get_detailed_stats')">Get Detailed Stats</button>
+                    <div class="advanced-actions">
+                        <div class="action-card">
+                            <div class="action-title">Get Detailed Analytics</div>
+                            <p style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 10px;">
+                                Comprehensive system analytics including wealth distribution and asset statistics
+                            </p>
+                            <button class="btn btn-primary" onclick="systemAdvancedAction('get_detailed_stats')">Get Detailed Stats</button>
+                        </div>
+                        
+                        <div class="action-card">
+                            <div class="action-title">System Health Check</div>
+                            <p style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 10px;">
+                                Check system integrity and data consistency
+                            </p>
+                            <button class="btn btn-info" onclick="systemAdvancedAction('get_system_health')">Check Health</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -610,6 +648,53 @@
             <div class="tab-content" id="advancedTab">
                 <div class="section">
                     <div class="section-title">🚀 Advanced Features</div>
+                    
+                    <div class="section-subtitle">🔄 Database Operations</div>
+                    <div class="advanced-actions">
+                        <div class="action-card">
+                            <div class="action-title">Cleanup Old Data</div>
+                            <p style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 10px;">
+                                Remove players inactive for more than 30 days
+                            </p>
+                            <button class="btn btn-warning" onclick="systemAdvancedAction('cleanup_old_data')">Cleanup Data</button>
+                        </div>
+                        
+                        <div class="action-card">
+                            <div class="action-title">Create Database Backup</div>
+                            <p style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 10px;">
+                                Create a complete backup of all system data
+                            </p>
+                            <button class="btn btn-info" onclick="systemAdvancedAction('backup_database')">Create Backup</button>
+                        </div>
+                    </div>
+                    
+                    <div class="section-subtitle">🎮 Market Simulation</div>
+                    <div class="advanced-actions">
+                        <div class="action-card">
+                            <div class="action-title">Simulate Market Crash</div>
+                            <p style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 10px;">
+                                Reduce all cryptocurrency prices by 50%
+                            </p>
+                            <button class="btn btn-danger" onclick="systemAdvancedAction('simulate_market_crash')">Simulate Crash</button>
+                        </div>
+                        
+                        <div class="action-card">
+                            <div class="action-title">Simulate Market Boom</div>
+                            <p style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 10px;">
+                                Double all cryptocurrency prices
+                            </p>
+                            <button class="btn btn-primary" onclick="systemAdvancedAction('simulate_market_boom')">Simulate Boom</button>
+                        </div>
+                        
+                        <div class="action-card">
+                            <div class="action-title">Reset Entire Economy</div>
+                            <p style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 10px;">
+                                Complete reset of all players and P2P orders
+                            </p>
+                            <button class="btn btn-danger" onclick="systemAdvancedAction('reset_economy')">Reset Economy</button>
+                        </div>
+                    </div>
+                    
                     <div id="advancedContent">
                         <div class="loading">Advanced features will be displayed here</div>
                     </div>
@@ -690,6 +775,8 @@
             // Загрузить данные для таба если нужно
             if (tabName === 'players') {
                 loadPlayers();
+            } else if (tabName === 'overview') {
+                loadStats();
             }
         }
         
@@ -833,6 +920,26 @@
                             <div class="stat-value">${stats.p2p_stats.filled_orders}</div>
                             <div class="stat-label">Filled</div>
                         </div>
+                    </div>
+                </div>
+                
+                <div class="stats-section">
+                    <div class="section-subtitle">💰 Asset Distribution</div>
+                    <div class="stats-grid-small">
+            `;
+            
+            // Добавляем статистику по активам
+            for (const [symbol, asset] of Object.entries(stats.assets)) {
+                html += `
+                    <div class="stat-card">
+                        <div class="stat-value">${formatNumber(asset.total_owned, 2)}</div>
+                        <div class="stat-label">${symbol}</div>
+                        <div class="stat-label">${asset.players_owning} owners</div>
+                    </div>
+                `;
+            }
+            
+            html += `
                     </div>
                 </div>
             `;
@@ -1353,8 +1460,16 @@
                     } else if (action === 'get_detailed_stats') {
                         displayDetailedStats(result.stats);
                         showTab('overview');
+                    } else if (action === 'get_system_health') {
+                        displaySystemHealth(result.health);
+                        showTab('advanced');
                     } else {
                         showNotification(result.message);
+                        // Перезагружаем данные если нужно
+                        if (action.includes('reset') || action.includes('cleanup') || action.includes('fix')) {
+                            loadStats();
+                            loadPlayers();
+                        }
                     }
                 } else {
                     showNotification(result.error, 'error');
@@ -1362,6 +1477,51 @@
             } catch (error) {
                 showNotification('Advanced action failed: ' + error.message, 'error');
             }
+        }
+        
+        function displaySystemHealth(health) {
+            const advancedContent = document.getElementById('advancedContent');
+            
+            const healthStatus = health.health_score >= 90 ? 'good' : health.health_score >= 70 ? 'warning' : 'critical';
+            const healthEmoji = health.health_score >= 90 ? '🟢' : health.health_score >= 70 ? '🟡' : '🔴';
+            
+            advancedContent.innerHTML = `
+                <div class="section-subtitle">System Health Status ${healthEmoji}</div>
+                <div class="stats-grid-small">
+                    <div class="stat-card">
+                        <div class="stat-value">${health.total_players}</div>
+                        <div class="stat-label">Total Players</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value ${health.corrupted_players > 0 ? 'health-critical' : 'health-good'}">${health.corrupted_players}</div>
+                        <div class="stat-label">Corrupted Players</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${health.p2p_orders_total}</div>
+                        <div class="stat-label">P2P Orders</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${Math.round(health.health_score)}%</div>
+                        <div class="stat-label">Health Score</div>
+                    </div>
+                </div>
+                
+                <div class="section-subtitle">Additional Info</div>
+                <div class="stats-grid-small">
+                    <div class="stat-card">
+                        <div class="stat-value">${health.p2p_orders_active}</div>
+                        <div class="stat-label">Active Orders</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${formatNumber(health.database_size)}</div>
+                        <div class="stat-label">DB Size (chars)</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${Math.round(health.system_uptime / 60)}m</div>
+                        <div class="stat-label">Uptime</div>
+                    </div>
+                </div>
+            `;
         }
         
         // Автообновление статистики каждые 30 секунд
