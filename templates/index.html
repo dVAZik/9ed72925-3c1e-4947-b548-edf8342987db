@@ -400,6 +400,11 @@
             color: var(--text-secondary);
             font-size: 0.9em;
         }
+        
+        .compact-number {
+            font-feature-settings: 'tnum' 1;
+            font-variant-numeric: tabular-nums;
+        }
     </style>
 </head>
 <body>
@@ -409,7 +414,7 @@
             <div class="exchange-header">
                 <div class="logo">CRYPTO EXCHANGE</div>
                 <div class="user-balance">
-                    <div class="balance-amount" id="totalValue">$10,000.00</div>
+                    <div class="balance-amount compact-number" id="totalValue">$10K</div>
                     <div class="balance-label">Total Balance</div>
                 </div>
             </div>
@@ -418,11 +423,11 @@
                 <div style="display: flex; justify-content: space-between;">
                     <div>
                         <div class="balance-label">Available</div>
-                        <div class="balance-amount" id="availableBalance">$10,000.00</div>
+                        <div class="balance-amount compact-number" id="availableBalance">$10K</div>
                     </div>
                     <div style="text-align: right;">
                         <div class="balance-label">24h P&L</div>
-                        <div class="balance-amount" id="profitLoss" style="color: var(--positive);">+$0.00</div>
+                        <div class="balance-amount compact-number" id="profitLoss" style="color: var(--positive);">+$0</div>
                     </div>
                 </div>
             </div>
@@ -530,6 +535,83 @@
             'SOL': { name: 'Solana', color: '#00ffbd', emoji: '🔆' },
             'DOT': { name: 'Polkadot', color: '#e6007a', emoji: '🔴' }
         };
+
+        // Функции форматирования чисел
+        function formatNumber(num, decimals = 2) {
+            if (num === 0 || !num) return '0';
+            
+            const absNum = Math.abs(num);
+            
+            if (absNum >= 1e12) {
+                return (num / 1e12).toFixed(decimals) + 'T';
+            } else if (absNum >= 1e9) {
+                return (num / 1e9).toFixed(decimals) + 'B';
+            } else if (absNum >= 1e6) {
+                return (num / 1e6).toFixed(decimals) + 'M';
+            } else if (absNum >= 1e3) {
+                return (num / 1e3).toFixed(decimals) + 'K';
+            } else if (absNum >= 1) {
+                return num.toLocaleString('en-US', { 
+                    minimumFractionDigits: decimals, 
+                    maximumFractionDigits: decimals 
+                });
+            } else if (absNum >= 0.01) {
+                return num.toFixed(4);
+            } else if (absNum >= 0.0001) {
+                return num.toFixed(6);
+            } else {
+                return num.toExponential(2);
+            }
+        }
+
+        function formatPrice(price) {
+            if (price >= 1000) {
+                return formatNumber(price, 2);
+            } else if (price >= 1) {
+                return price.toLocaleString('en-US', { 
+                    minimumFractionDigits: 2, 
+                    maximumFractionDigits: 2 
+                });
+            } else if (price >= 0.01) {
+                return price.toFixed(4);
+            } else {
+                return price.toFixed(6);
+            }
+        }
+
+        function formatAmount(amount) {
+            if (amount >= 1000) {
+                return formatNumber(amount, 2);
+            } else if (amount >= 1) {
+                return amount.toFixed(2);
+            } else if (amount >= 0.01) {
+                return amount.toFixed(4);
+            } else {
+                return amount.toFixed(6);
+            }
+        }
+
+        function formatCurrency(amount, includeSymbol = true) {
+            const symbol = includeSymbol ? '$' : '';
+            if (amount >= 1e12) {
+                return symbol + (amount / 1e12).toFixed(2) + 'T';
+            } else if (amount >= 1e9) {
+                return symbol + (amount / 1e9).toFixed(2) + 'B';
+            } else if (amount >= 1e6) {
+                return symbol + (amount / 1e6).toFixed(2) + 'M';
+            } else if (amount >= 1e3) {
+                return symbol + (amount / 1e3).toFixed(2) + 'K';
+            } else if (amount >= 1) {
+                return symbol + amount.toLocaleString('en-US', { 
+                    minimumFractionDigits: 2, 
+                    maximumFractionDigits: 2 
+                });
+            } else if (amount >= 0.01) {
+                return symbol + amount.toFixed(4);
+            } else {
+                return symbol + amount.toFixed(6);
+            }
+        }
         
         // Инициализация
         function initTelegram() {
@@ -600,13 +682,13 @@
         function updateDisplay(data) {
             if (!data) return;
             
-            // Обновляем балансы
-            document.getElementById('totalValue').textContent = `$${data.total_value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-            document.getElementById('availableBalance').textContent = `$${data.balance.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            // Обновляем балансы с форматированием
+            document.getElementById('totalValue').textContent = formatCurrency(data.total_value);
+            document.getElementById('availableBalance').textContent = formatCurrency(data.balance);
             
             const profit = data.total_value - 10000;
             const profitElement = document.getElementById('profitLoss');
-            profitElement.textContent = `${profit >= 0 ? '+' : ''}$${Math.abs(profit).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+            profitElement.textContent = (profit >= 0 ? '+' : '-') + formatCurrency(Math.abs(profit), false);
             profitElement.style.color = profit >= 0 ? 'var(--positive)' : 'var(--negative)';
             
             // Обновляем тикер
@@ -635,20 +717,10 @@
                 tickerItem.className = `ticker-item ${selectedSymbol === symbol ? 'active' : ''}`;
                 tickerItem.onclick = () => selectSymbol(symbol);
                 
-                // Форматируем цену в зависимости от ее величины
-                let priceFormatted;
-                if (price < 1) {
-                    priceFormatted = `$${price.toFixed(4)}`;
-                } else if (price < 1000) {
-                    priceFormatted = `$${price.toFixed(2)}`;
-                } else {
-                    priceFormatted = `$${price.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-                }
-                
                 tickerItem.innerHTML = `
                     <div class="ticker-symbol">${config.emoji} ${symbol}</div>
-                    <div class="ticker-price">${priceFormatted}</div>
-                    <div class="ticker-change ${change >= 0 ? 'change-positive' : 'change-negative'}">
+                    <div class="ticker-price compact-number">${formatCurrency(price)}</div>
+                    <div class="ticker-change ${change >= 0 ? 'change-positive' : 'change-negative'} compact-number">
                         ${change >= 0 ? '+' : ''}${change.toFixed(2)}%
                     </div>
                 `;
@@ -672,8 +744,8 @@
                 const row = document.createElement('div');
                 row.className = 'order-row';
                 row.innerHTML = `
-                    <span>$${bid.price.toLocaleString('en-US', {minimumFractionDigits: bid.price < 1 ? 4 : 2, maximumFractionDigits: bid.price < 1 ? 4 : 2})}</span>
-                    <span>${bid.amount}</span>
+                    <span class="compact-number">${formatCurrency(bid.price)}</span>
+                    <span class="compact-number">${formatAmount(bid.amount)}</span>
                 `;
                 bidsList.appendChild(row);
             });
@@ -682,8 +754,8 @@
                 const row = document.createElement('div');
                 row.className = 'order-row';
                 row.innerHTML = `
-                    <span>$${ask.price.toLocaleString('en-US', {minimumFractionDigits: ask.price < 1 ? 4 : 2, maximumFractionDigits: ask.price < 1 ? 4 : 2})}</span>
-                    <span>${ask.amount}</span>
+                    <span class="compact-number">${formatCurrency(ask.price)}</span>
+                    <span class="compact-number">${formatAmount(ask.amount)}</span>
                 `;
                 asksList.appendChild(row);
             });
@@ -710,12 +782,12 @@
                             <div class="asset-icon ${symbol.toLowerCase()}-bg">${config.emoji}</div>
                             <div class="asset-details">
                                 <div class="asset-symbol">${config.name}</div>
-                                <div class="asset-amount">${amount.toFixed(4)} ${symbol}</div>
+                                <div class="asset-amount compact-number">${formatAmount(amount)} ${symbol}</div>
                             </div>
                         </div>
                         <div class="asset-value">
-                            <div class="value-amount">$${value.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                            <div class="value-usd">@ $${price.toLocaleString('en-US', {minimumFractionDigits: price < 1 ? 4 : 2, maximumFractionDigits: price < 1 ? 4 : 2})}</div>
+                            <div class="value-amount compact-number">${formatCurrency(value)}</div>
+                            <div class="value-usd compact-number">@ ${formatCurrency(price)}</div>
                         </div>
                     `;
                     
@@ -821,7 +893,7 @@
                 total = amount * limitPrice;
             }
             
-            document.getElementById('orderTotal').value = total > 0 ? `$${total.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : '$0.00';
+            document.getElementById('orderTotal').value = total > 0 ? formatCurrency(total) : '$0.00';
         }
         
         async function placeOrder(type) {
