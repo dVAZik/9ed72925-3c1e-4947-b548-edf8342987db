@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Panel - Crypto Exchange</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #111111;
+            --bg-tertiary: #1a1a1a;
+            --border: #2a2a2a;
+            --text-primary: #ffffff;
+            --text-secondary: #888888;
+            --text-accent: #00ff88;
+            --positive: #00ff88;
+            --negative: #ff4444;
+            --warning: #ffaa00;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+            font-weight: 400;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+        }
+        
+        .logo {
+            font-size: 1.8em;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1em;
+        }
+        
+        .login-section {
+            background: var(--bg-secondary);
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+        
+        .admin-section {
+            display: none;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: var(--bg-tertiary);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+        
+        .section {
+            background: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+        }
+        
+        .section-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--text-accent);
+        }
+        
+        .players-grid {
+            display: grid;
+            gap: 10px;
+        }
+        
+        .player-card {
+            background: var(--bg-tertiary);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .player-info {
+            line-height: 1.4;
+        }
+        
+        .player-id {
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+        
+        .player-stats {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+        }
+        
+        .player-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: var(--positive);
+            color: #000;
+        }
+        
+        .btn-warning {
+            background: var(--warning);
+            color: #000;
+        }
+        
+        .btn-danger {
+            background: var(--negative);
+            color: #fff;
+        }
+        
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+        
+        .btn:hover {
+            opacity: 0.8;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+        }
+        
+        .input-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+        
+        .input-field {
+            width: 100%;
+            padding: 10px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+        }
+        
+        .actions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            z-index: 1000;
+            display: none;
+        }
+        
+        .notification.success {
+            border-color: var(--positive);
+        }
+        
+        .notification.error {
+            border-color: var(--negative);
+        }
+        
+        .compact-number {
+            font-feature-settings: 'tnum' 1;
+            font-variant-numeric: tabular-nums;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">🔐 Crypto Exchange Admin Panel</div>
+            <div class="subtitle">System Management & Player Monitoring</div>
+        </div>
+        
+        <div class="login-section" id="loginSection">
+            <h2>Admin Login</h2>
+            <div class="input-group">
+                <label class="input-label">Password</label>
+                <input type="password" class="input-field" id="adminPassword" placeholder="Enter admin password">
+            </div>
+            <button class="btn btn-primary" onclick="adminLogin()">Login</button>
+        </div>
+        
+        <div class="admin-section" id="adminSection">
+            <!-- System Stats -->
+            <div class="section">
+                <div class="section-title">📊 System Overview</div>
+                <div class="stats-grid" id="systemStats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="totalPlayers">0</div>
+                        <div class="stat-label">Total Players</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value compact-number" id="totalBalance">$0</div>
+                        <div class="stat-label">Total Balance</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value compact-number" id="totalPortfolio">$0</div>
+                        <div class="stat-label">Portfolio Value</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value compact-number" id="totalWealth">$0</div>
+                        <div class="stat-label">Total Wealth</div>
+                    </div>
+                </div>
+                
+                <div class="section-title">⚡ System Actions</div>
+                <div class="actions-grid">
+                    <button class="btn btn-primary" onclick="systemAction('save')">💾 Save Data</button>
+                    <button class="btn btn-secondary" onclick="systemAction('reload')">🔄 Reload Data</button>
+                    <button class="btn btn-warning" onclick="systemAction('update_prices_all')">📈 Update All Prices</button>
+                    <button class="btn btn-secondary" onclick="loadStats()">🔄 Refresh Stats</button>
+                </div>
+            </div>
+            
+            <!-- Players Management -->
+            <div class="section">
+                <div class="section-title">👥 Players Management</div>
+                <div class="players-grid" id="playersList">
+                    <div class="loading">Loading players...</div>
+                </div>
+            </div>
+            
+            <!-- Player Details Modal -->
+            <div class="section" id="playerDetails" style="display: none;">
+                <div class="section-title">👤 Player Details</div>
+                <div id="playerDetailsContent"></div>
+                <button class="btn btn-secondary" onclick="hidePlayerDetails()">← Back to Players</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <script>
+        let adminPassword = '';
+        
+        // Форматирование чисел
+        function formatNumber(num, decimals = 2) {
+            if (num === 0 || !num) return '0';
+            const absNum = Math.abs(num);
+            if (absNum >= 1e12) return (num / 1e12).toFixed(decimals) + 'T';
+            else if (absNum >= 1e9) return (num / 1e9).toFixed(decimals) + 'B';
+            else if (absNum >= 1e6) return (num / 1e6).toFixed(decimals) + 'M';
+            else if (absNum >= 1e3) return (num / 1e3).toFixed(decimals) + 'K';
+            else return num.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+        }
+        
+        function formatCurrency(amount) {
+            return '$' + formatNumber(amount);
+        }
+        
+        // Уведомления
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.style.display = 'block';
+            setTimeout(() => notification.style.display = 'none', 3000);
+        }
+        
+        // Аутентификация
+        async function adminLogin() {
+            const password = document.getElementById('adminPassword').value;
+            if (!password) {
+                showNotification('Please enter password', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/admin/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    adminPassword = password;
+                    document.getElementById('loginSection').style.display = 'none';
+                    document.getElementById('adminSection').style.display = 'block';
+                    loadStats();
+                    loadPlayers();
+                    showNotification('Login successful');
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Login failed: ' + error.message, 'error');
+            }
+        }
+        
+        // Загрузка статистики
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/admin/stats', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: adminPassword })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const stats = result.stats;
+                    document.getElementById('totalPlayers').textContent = stats.total_players;
+                    document.getElementById('totalBalance').textContent = formatCurrency(stats.total_balance);
+                    document.getElementById('totalPortfolio').textContent = formatCurrency(stats.total_portfolio_value);
+                    document.getElementById('totalWealth').textContent = formatCurrency(stats.total_wealth);
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Failed to load stats: ' + error.message, 'error');
+            }
+        }
+        
+        // Загрузка игроков
+        async function loadPlayers() {
+            try {
+                const response = await fetch('/api/admin/players', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: adminPassword })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const playersList = document.getElementById('playersList');
+                    playersList.innerHTML = '';
+                    
+                    result.players.forEach(player => {
+                        const playerCard = document.createElement('div');
+                        playerCard.className = 'player-card';
+                        
+                        playerCard.innerHTML = `
+                            <div class="player-info">
+                                <div class="player-id">${player.username} (${player.user_id.substring(0, 8)}...)</div>
+                                <div class="player-stats">
+                                    Balance: ${formatCurrency(player.balance)} | 
+                                    Portfolio: ${formatCurrency(player.portfolio_value)} | 
+                                    Total: ${formatCurrency(player.total_value)} |
+                                    Orders: ${player.orders_count}
+                                </div>
+                                <div class="player-stats">
+                                    Created: ${new Date(player.created_at).toLocaleDateString()} |
+                                    Last login: ${new Date(player.last_login).toLocaleDateString()}
+                                </div>
+                            </div>
+                            <div class="player-actions">
+                                <button class="btn btn-primary" onclick="viewPlayer('${player.user_id}')">View</button>
+                                <button class="btn btn-warning" onclick="resetPlayer('${player.user_id}')">Reset</button>
+                            </div>
+                        `;
+                        
+                        playersList.appendChild(playerCard);
+                    });
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Failed to load players: ' + error.message, 'error');
+            }
+        }
+        
+        // Просмотр игрока
+        async function viewPlayer(userId) {
+            try {
+                const response = await fetch(`/api/admin/player/${userId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: adminPassword, action: 'get_info' })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const player = result.player;
+                    const content = document.getElementById('playerDetailsContent');
+                    
+                    let portfolioHtml = '';
+                    for (const [symbol, amount] of Object.entries(player.portfolio)) {
+                        if (amount > 0) {
+                            portfolioHtml += `<div>${symbol}: ${amount}</div>`;
+                        }
+                    }
+                    
+                    content.innerHTML = `
+                        <div class="player-info">
+                            <div class="player-id">User ID: ${userId}</div>
+                            <div class="player-stats">Balance: ${formatCurrency(player.balance)}</div>
+                            <div class="player-stats">Portfolio Value: ${formatCurrency(player.portfolio_value)}</div>
+                            <div class="player-stats">Total Value: ${formatCurrency(player.total_value)}</div>
+                            <div class="player-stats">Orders: ${player.orders.length}</div>
+                            <div class="player-stats">Created: ${new Date(player.created_at).toLocaleString()}</div>
+                            <div class="player-stats">Last Login: ${new Date(player.last_login).toLocaleString()}</div>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label class="input-label">Add Balance Amount ($)</label>
+                            <input type="number" class="input-field" id="addBalanceAmount" placeholder="1000">
+                        </div>
+                        <button class="btn btn-primary" onclick="addBalance('${userId}')">Add Balance</button>
+                        
+                        <div class="input-group">
+                            <label class="input-label">Set Balance Amount ($)</label>
+                            <input type="number" class="input-field" id="setBalanceAmount" placeholder="10000">
+                        </div>
+                        <button class="btn btn-warning" onclick="setBalance('${userId}')">Set Balance</button>
+                    `;
+                    
+                    document.getElementById('playersList').style.display = 'none';
+                    document.getElementById('playerDetails').style.display = 'block';
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Failed to load player: ' + error.message, 'error');
+            }
+        }
+        
+        function hidePlayerDetails() {
+            document.getElementById('playerDetails').style.display = 'none';
+            document.getElementById('playersList').style.display = 'grid';
+            loadPlayers();
+        }
+        
+        // Действия с игроком
+        async function resetPlayer(userId) {
+            if (confirm(`Are you sure you want to reset player ${userId}?`)) {
+                try {
+                    const response = await fetch(`/api/admin/player/${userId}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ password: adminPassword, action: 'reset' })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        showNotification(result.message);
+                        loadPlayers();
+                    } else {
+                        showNotification(result.error, 'error');
+                    }
+                } catch (error) {
+                    showNotification('Failed to reset player: ' + error.message, 'error');
+                }
+            }
+        }
+        
+        async function addBalance(userId) {
+            const amount = parseFloat(document.getElementById('addBalanceAmount').value);
+            if (!amount || amount <= 0) {
+                showNotification('Please enter valid amount', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/admin/player/${userId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: adminPassword, action: 'add_balance', amount })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification(result.message);
+                    viewPlayer(userId); // Обновляем данные игрока
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Failed to add balance: ' + error.message, 'error');
+            }
+        }
+        
+        async function setBalance(userId) {
+            const amount = parseFloat(document.getElementById('setBalanceAmount').value);
+            if (!amount || amount < 0) {
+                showNotification('Please enter valid amount', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/admin/player/${userId}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: adminPassword, action: 'set_balance', amount })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification(result.message);
+                    viewPlayer(userId); // Обновляем данные игрока
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Failed to set balance: ' + error.message, 'error');
+            }
+        }
+        
+        // Системные действия
+        async function systemAction(action) {
+            try {
+                const response = await fetch('/api/admin/system', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: adminPassword, action })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification(result.message);
+                    if (action === 'reload' || action === 'update_prices_all') {
+                        loadStats();
+                        loadPlayers();
+                    }
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('System action failed: ' + error.message, 'error');
+            }
+        }
+        
+        // Автообновление статистики каждые 30 секунд
+        setInterval(() => {
+            if (adminPassword) {
+                loadStats();
+            }
+        }, 30000);
+    </script>
+</body>
+</html>
