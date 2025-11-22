@@ -5,10 +5,47 @@ import math
 from datetime import datetime, timedelta
 import os
 import atexit
-from database import db
+import threading
+import time
 
 app = Flask(__name__)
 port = int(os.environ.get("PORT", 5000))
+
+# Файл для хранения данных
+DATA_FILE = "game_data.json"
+
+# Загрузка данных из файла
+def load_game_data():
+    try:
+        if os.path.exists(DATA_FILE):
+            with open(DATA_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                print(f"✅ Loaded game data with {len(data.get('players', {}))} players")
+                return data
+    except Exception as e:
+        print(f"❌ Error loading data: {e}")
+    print("🆕 Starting with fresh game data")
+    return {"players": {}, "last_save": datetime.now().isoformat()}
+
+# Сохранение данных в файл
+def save_game_data():
+    try:
+        with open(DATA_FILE, 'w', encoding='utf-8') as f:
+            game_data["last_save"] = datetime.now().isoformat()
+            json.dump(game_data, f, indent=2, ensure_ascii=False)
+        print(f"💾 Game data saved: {len(game_data.get('players', {}))} players")
+    except Exception as e:
+        print(f"❌ Error saving data: {e}")
+
+# Автосохранение при выходе
+def save_on_exit():
+    print("💾 Saving data before exit...")
+    save_game_data()
+
+atexit.register(save_on_exit)
+
+# Загружаем данные при старте
+game_data = load_game_data()
 
 # Популярные криптовалюты с реалистичными параметрами
 CRYPTOS = {
@@ -165,7 +202,9 @@ def create_new_player_data():
         "orders": [],
         "price_history": {},
         "current_prices": {},
-        "order_books": {}
+        "order_books": {},
+        "created_at": datetime.now().isoformat(),
+        "last_login": datetime.now().isoformat()
     }
     
     # Инициализируем цены и стаканы
@@ -198,24 +237,21 @@ def index():
 
 @app.route('/health')
 def health_check():
+    players_count = len(game_data.get("players", {}))
+    last_save = game_data.get("last_save", "Never")
     return jsonify({
         "status": "healthy", 
         "service": "crypto-exchange",
-        "database": "connected",
-        "players_count": len(db.get_all_players())
+        "players_count": players_count,
+        "last_save": last_save
     })
 
 # Эндпоинт для принудительного сохранения
 @app.route('/api/save', methods=['POST'])
 def force_save():
     try:
-        user_id = request.json.get('user_id')
-        if user_id:
-            player_data = db.get_player_data(user_id)
-            if player_data:
-                db.save_player(user_id, player_data)
-                return jsonify({"success": True, "message": f"Player {user_id} data saved"})
-        return jsonify({"success": False, "error": "Player not found"})
+        save_game_data()
+        return jsonify({"success": True, "message": "Data saved successfully"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -224,7 +260,8 @@ def force_save():
 def reset_player(user_id):
     try:
         player_data = create_new_player_data()
-        db.save_player(user_id, player_data)
+        game_data["players"][user_id] = player_data
+        save_game_data()
         return jsonify({
             "success": True, 
             "message": f"Player {user_id} reset successfully",
@@ -236,40 +273,38 @@ def reset_player(user_id):
 @app.route('/api/player/<user_id>', methods=['GET'])
 def get_player_data(user_id):
     try:
-        # Получаем данные игрока из базы
-        player_data = db.get_player_data(user_id)
-        
-        if not player_data:
+        if user_id not in game_data["players"]:
             # Создаем нового игрока
             player_data = create_new_player_data()
-            db.save_player(user_id, player_data)
+            game_data["players"][user_id] = player_data
+            save_game_data()  # Сохраняем при создании нового игрока
             print(f"✅ Created new player: {user_id}")
+        
+        player = game_data["players"][user_id]
+        player["last_login"] = datetime.now().isoformat()
         
         # Обновляем цены и стаканы для ВСЕХ криптовалют
         for symbol, crypto in CRYPTOS.items():
-            current_price = player_data["current_prices"][symbol]
+            current_price = player["current_prices"][symbol]
             new_price = generate_realistic_price(current_price, crypto["volatility"], symbol)
             
-            player_data["current_prices"][symbol] = new_price
-            player_data["price_history"][symbol].append(new_price)
-            if len(player_data["price_history"][symbol]) > 50:
-                player_data["price_history"][symbol].pop(0)
+            player["current_prices"][symbol] = new_price
+            player["price_history"][symbol].append(new_price)
+            if len(player["price_history"][symbol]) > 50:
+                player["price_history"][symbol].pop(0)
             
             # Обновляем стакан
-            player_data["order_books"][symbol] = update_order_book(symbol, new_price)
+            player["order_books"][symbol] = update_order_book(symbol, new_price)
         
         # Пересчитываем стоимость портфеля
         portfolio_value = sum(
-            player_data["portfolio"][symbol] * player_data["current_prices"][symbol] 
+            player["portfolio"][symbol] * player["current_prices"][symbol] 
             for symbol in CRYPTOS
         )
-        player_data["portfolio_value"] = round(portfolio_value, 2)
-        player_data["total_value"] = round(player_data["balance"] + portfolio_value, 2)
+        player["portfolio_value"] = round(portfolio_value, 2)
+        player["total_value"] = round(player["balance"] + portfolio_value, 2)
         
-        # Сохраняем обновленные данные
-        db.save_player(user_id, player_data)
-        
-        return jsonify(player_data)
+        return jsonify(player)
         
     except Exception as e:
         print(f"Error in get_player_data: {str(e)}")
@@ -287,43 +322,42 @@ def place_order():
         
         if not all([user_id, symbol, order_type, amount]):
             return jsonify({"error": "Missing parameters"}), 400
-        
-        # Получаем данные игрока из базы
-        player_data = db.get_player_data(user_id)
-        if not player_data:
+            
+        if user_id not in game_data["players"]:
             return jsonify({"error": "Player not found"}), 404
             
         if symbol not in CRYPTOS:
             return jsonify({"error": "Invalid symbol"}), 400
         
-        current_price = player_data["current_prices"][symbol]
+        player = game_data["players"][user_id]
+        current_price = player["current_prices"][symbol]
         
         if price_type == 'market':
             execution_price = current_price
             total_cost = amount * execution_price
             
             if order_type == 'buy':
-                if player_data["balance"] < total_cost:
+                if player["balance"] < total_cost:
                     return jsonify({
                         "success": False,
                         "error": f"Недостаточно средств. Нужно: ${total_cost:.2f}"
                     })
                 
-                player_data["balance"] -= total_cost
-                player_data["portfolio"][symbol] += amount
+                player["balance"] -= total_cost
+                player["portfolio"][symbol] += amount
                 
             else:
-                if player_data["portfolio"][symbol] < amount:
+                if player["portfolio"][symbol] < amount:
                     return jsonify({
                         "success": False,
                         "error": f"Недостаточно {symbol} для продажи"
                     })
                 
-                player_data["balance"] += total_cost
-                player_data["portfolio"][symbol] -= amount
+                player["balance"] += total_cost
+                player["portfolio"][symbol] -= amount
             
             order = {
-                "id": len(player_data["orders"]) + 1,
+                "id": len(player["orders"]) + 1,
                 "symbol": symbol,
                 "type": order_type,
                 "amount": amount,
@@ -332,21 +366,21 @@ def place_order():
                 "status": "filled",
                 "timestamp": datetime.now().isoformat()
             }
-            player_data["orders"].append(order)
+            player["orders"].append(order)
             
             # Сохраняем после успешной сделки
-            db.save_player(user_id, player_data)
+            save_game_data()
             
             return jsonify({
                 "success": True,
                 "message": f"{order_type.upper()} {amount} {symbol} @ ${execution_price:.2f}",
                 "order": order,
-                "player": player_data
+                "player": player
             })
         
         else:
             order = {
-                "id": len(player_data["orders"]) + 1,
+                "id": len(player["orders"]) + 1,
                 "symbol": symbol,
                 "type": order_type,
                 "amount": amount,
@@ -355,16 +389,16 @@ def place_order():
                 "status": "pending",
                 "timestamp": datetime.now().isoformat()
             }
-            player_data["orders"].append(order)
+            player["orders"].append(order)
             
             # Сохраняем лимитный ордер
-            db.save_player(user_id, player_data)
+            save_game_data()
             
             return jsonify({
                 "success": True,
                 "message": f"Limit order placed: {order_type} {amount} {symbol} @ ${limit_price:.2f}",
                 "order": order,
-                "player": player_data
+                "player": player
             })
         
     except Exception as e:
@@ -376,28 +410,26 @@ def update_prices():
     try:
         user_id = request.json.get('user_id')
         
-        player_data = db.get_player_data(user_id)
-        if not player_data:
+        if user_id not in game_data["players"]:
             return jsonify({"error": "Player not found"}), 404
+            
+        player = game_data["players"][user_id]
         
         for symbol, crypto in CRYPTOS.items():
-            current_price = player_data["current_prices"][symbol]
+            current_price = player["current_prices"][symbol]
             new_price = generate_realistic_price(current_price, crypto["volatility"] * 2, symbol)
             
-            player_data["current_prices"][symbol] = new_price
-            player_data["price_history"][symbol].append(new_price)
-            if len(player_data["price_history"][symbol]) > 50:
-                player_data["price_history"][symbol].pop(0)
+            player["current_prices"][symbol] = new_price
+            player["price_history"][symbol].append(new_price)
+            if len(player["price_history"][symbol]) > 50:
+                player["price_history"][symbol].pop(0)
             
-            player_data["order_books"][symbol] = update_order_book(symbol, new_price)
-        
-        # Сохраняем обновленные данные
-        db.save_player(user_id, player_data)
+            player["order_books"][symbol] = update_order_book(symbol, new_price)
         
         return jsonify({
             "success": True,
             "message": "Prices updated",
-            "player": player_data
+            "player": player
         })
         
     except Exception as e:
@@ -408,7 +440,7 @@ def update_prices():
 @app.route('/api/stats', methods=['GET'])
 def get_stats():
     try:
-        players = db.get_all_players()
+        players = game_data.get("players", {})
         total_players = len(players)
         total_balance = sum(player['balance'] for player in players.values())
         total_portfolio_value = sum(player['portfolio_value'] for player in players.values())
@@ -417,26 +449,24 @@ def get_stats():
             "total_players": total_players,
             "total_balance": total_balance,
             "total_portfolio_value": total_portfolio_value,
-            "total_wealth": total_balance + total_portfolio_value
+            "total_wealth": total_balance + total_portfolio_value,
+            "last_save": game_data.get("last_save", "Never")
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# Функция для закрытия базы при выходе
-def close_database():
-    print("💾 Closing database connection...")
-    db.close()
+# Периодическое автосохранение
+def auto_save():
+    while True:
+        time.sleep(300)  # Сохраняем каждые 5 минут
+        save_game_data()
 
-atexit.register(close_database)
+# Запускаем автосохранение в отдельном потоке
+auto_save_thread = threading.Thread(target=auto_save, daemon=True)
+auto_save_thread.start()
 
 if __name__ == '__main__':
     print(f"🚀 Starting Crypto Exchange Pro on port {port}")
-    print("💾 Using SQLite database for persistent storage")
-    print(f"📊 Total players in database: {len(db.get_all_players())}")
-    
-    try:
-        app.run(host='0.0.0.0', port=port, debug=False)
-    except Exception as e:
-        print(f"❌ Error starting server: {e}")
-    finally:
-        close_database()
+    print(f"💾 Data will be saved to: {DATA_FILE}")
+    print(f"📊 Current players: {len(game_data.get('players', {}))}")
+    app.run(host='0.0.0.0', port=port, debug=False)
