@@ -8,6 +8,7 @@ import atexit
 import threading
 import time
 import hashlib
+import functools
 
 app = Flask(__name__)
 port = int(os.environ.get("PORT", 5000))
@@ -44,7 +45,7 @@ class AdminConfig:
     
     def change_password(self, new_password):
         """Смена пароля (только через переменные окружения)"""
-        return False, "Password can only be changed via ADMIN_PASSWORD environment variable"
+        return False, "Password can only be changed via ADMIN_PASSWORD environment variable in Render dashboard"
     
     def is_locked(self, ip):
         """Проверка блокировки IP"""
@@ -82,6 +83,7 @@ def get_client_ip():
 
 # Декоратор для защиты админ эндпоинтов
 def require_admin_auth(f):
+    @functools.wraps(f)
     def decorated_function(*args, **kwargs):
         try:
             client_ip = get_client_ip()
@@ -436,7 +438,7 @@ def admin_login():
 
 @app.route('/api/admin/change_password', methods=['POST'])
 @require_admin_auth
-def admin_change_password():
+def admin_change_password_route():
     return jsonify({
         "success": False, 
         "error": "Password can only be changed via ADMIN_PASSWORD environment variable in Render dashboard"
@@ -444,7 +446,7 @@ def admin_change_password():
 
 @app.route('/api/admin/stats', methods=['POST'])
 @require_admin_auth
-def admin_stats():
+def admin_stats_route():
     update_system_stats()
     return jsonify({
         "success": True,
@@ -454,7 +456,7 @@ def admin_stats():
 
 @app.route('/api/admin/players', methods=['POST'])
 @require_admin_auth
-def admin_players():
+def admin_players_route():
     players = game_data.get("players", {})
     players_list = []
     
@@ -479,7 +481,7 @@ def admin_players():
 
 @app.route('/api/admin/player/<user_id>', methods=['POST'])
 @require_admin_auth
-def admin_player_manage(user_id):
+def admin_player_manage_route(user_id):
     action = request.json.get('action')
     
     if user_id not in game_data["players"]:
@@ -518,7 +520,7 @@ def admin_player_manage(user_id):
 
 @app.route('/api/admin/system', methods=['POST'])
 @require_admin_auth
-def admin_system():
+def admin_system_route():
     action = request.json.get('action')
     
     if action == "save":
@@ -550,7 +552,7 @@ def admin_system():
     else:
         return jsonify({"success": False, "error": "Unknown action"})
 
-# ИГРОВЫЕ ЭНДПОИНТЫ (без изменений)
+# ИГРОВЫЕ ЭНДПОИНТЫ
 
 @app.route('/api/save', methods=['POST'])
 def force_save():
