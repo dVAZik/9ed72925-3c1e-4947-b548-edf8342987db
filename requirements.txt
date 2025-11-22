@@ -2,4 +2,4 @@ flask==2.3.3
 python-telegram-bot==20.5
 flask-cors==4.0.0
 gunicorn==21.2.0
-sqlalchemy==2.0.23
+sqlalchemy==1.4.47
