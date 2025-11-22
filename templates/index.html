@@ -594,32 +594,39 @@
             'DOT': { name: 'Polkadot', color: '#e6007a', emoji: '🔴' }
         };
 
-        // Функции форматирования чисел
+        // Расширенная функция форматирования чисел
         function formatNumber(num, decimals = 2) {
             if (num === 0 || !num) return '0';
             
             const absNum = Math.abs(num);
+            const suffixes = [
+                '', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 
+                'Dc', 'Ud', 'Dd', 'Td', 'Qad', 'Qid', 'Sxd', 'Spd', 'Ocd', 'Nod',
+                'Vg', 'Uvg', 'Dvg', 'Tvg', 'Qavg', 'Qivg', 'Sxvg', 'Spvg', 'Ocvg', 'Novg',
+                'Tg', 'Utg', 'Dtg', 'Ttg', 'Qatg', 'Qitg', 'Sxtg', 'Sptg', 'Octg', 'Notg'
+            ];
             
-            if (absNum >= 1e12) {
-                return (num / 1e12).toFixed(decimals) + 'T';
-            } else if (absNum >= 1e9) {
-                return (num / 1e9).toFixed(decimals) + 'B';
-            } else if (absNum >= 1e6) {
-                return (num / 1e6).toFixed(decimals) + 'M';
-            } else if (absNum >= 1e3) {
-                return (num / 1e3).toFixed(decimals) + 'K';
-            } else if (absNum >= 1) {
-                return num.toLocaleString('en-US', { 
-                    minimumFractionDigits: decimals, 
-                    maximumFractionDigits: decimals 
-                });
-            } else if (absNum >= 0.01) {
-                return num.toFixed(4);
-            } else if (absNum >= 0.0001) {
-                return num.toFixed(6);
-            } else {
-                return num.toExponential(2);
+            let suffixIndex = 0;
+            let reducedNum = absNum;
+            
+            while (reducedNum >= 1000 && suffixIndex < suffixes.length - 1) {
+                reducedNum /= 1000;
+                suffixIndex++;
             }
+            
+            const sign = num < 0 ? '-' : '';
+            const formattedNum = reducedNum.toFixed(decimals);
+            
+            // Убираем лишние нули
+            let cleanNum = formattedNum;
+            if (decimals > 0) {
+                cleanNum = formattedNum.replace(/\.?0+$/, '');
+                if (cleanNum.endsWith('.')) {
+                    cleanNum = cleanNum.slice(0, -1);
+                }
+            }
+            
+            return sign + cleanNum + suffixes[suffixIndex];
         }
 
         function formatPrice(price) {
@@ -651,24 +658,7 @@
 
         function formatCurrency(amount, includeSymbol = true) {
             const symbol = includeSymbol ? '$' : '';
-            if (amount >= 1e12) {
-                return symbol + (amount / 1e12).toFixed(2) + 'T';
-            } else if (amount >= 1e9) {
-                return symbol + (amount / 1e9).toFixed(2) + 'B';
-            } else if (amount >= 1e6) {
-                return symbol + (amount / 1e6).toFixed(2) + 'M';
-            } else if (amount >= 1e3) {
-                return symbol + (amount / 1e3).toFixed(2) + 'K';
-            } else if (amount >= 1) {
-                return symbol + amount.toLocaleString('en-US', { 
-                    minimumFractionDigits: 2, 
-                    maximumFractionDigits: 2 
-                });
-            } else if (amount >= 0.01) {
-                return symbol + amount.toFixed(4);
-            } else {
-                return symbol + amount.toFixed(6);
-            }
+            return symbol + formatNumber(amount, 2);
         }
         
         // Инициализация
