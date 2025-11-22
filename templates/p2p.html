@@ -49,12 +49,7 @@
             border: 1px solid var(--border);
             text-align: center;
         }
-        <!-- Navigation -->
-        <div class="nav-buttons" style="margin: 20px; display: grid; grid-template-columns: 1fr; gap: 10px;">
-            <a href="/" class="nav-btn trade" style="text-decoration: none; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                📊 Back to Trading
-            </a>
-        </div>
+        
         .logo {
             font-size: 1.8em;
             font-weight: 600;
@@ -64,6 +59,40 @@
         .subtitle {
             color: var(--text-secondary);
             font-size: 1.1em;
+        }
+        
+        /* Navigation */
+        .nav-buttons {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .nav-btn {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        
+        .nav-btn:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--text-accent);
+        }
+        
+        .nav-btn.trade {
+            background: linear-gradient(45deg, #627eea, #8a2be2);
         }
         
         .section {
@@ -264,6 +293,13 @@
             <div class="subtitle">Trade directly with other players</div>
         </div>
         
+        <!-- Navigation -->
+        <div class="nav-buttons">
+            <a href="/" class="nav-btn trade">
+                📊 Back to Trading
+            </a>
+        </div>
+        
         <div class="section">
             <div class="section-title">Create Order</div>
             <div class="tabs">
@@ -339,6 +375,45 @@
         let currentUserId = '';
         let currentOrderType = 'buy';
         
+        // Расширенная функция форматирования чисел
+        function formatNumber(num, decimals = 2) {
+            if (num === 0 || !num) return '0';
+            
+            const absNum = Math.abs(num);
+            const suffixes = [
+                '', 'K', 'M', 'B', 'T', 'Qa', 'Qi', 'Sx', 'Sp', 'Oc', 'No', 
+                'Dc', 'Ud', 'Dd', 'Td', 'Qad', 'Qid', 'Sxd', 'Spd', 'Ocd', 'Nod',
+                'Vg', 'Uvg', 'Dvg', 'Tvg', 'Qavg', 'Qivg', 'Sxvg', 'Spvg', 'Ocvg', 'Novg',
+                'Tg', 'Utg', 'Dtg', 'Ttg', 'Qatg', 'Qitg', 'Sxtg', 'Sptg', 'Octg', 'Notg'
+            ];
+            
+            let suffixIndex = 0;
+            let reducedNum = absNum;
+            
+            while (reducedNum >= 1000 && suffixIndex < suffixes.length - 1) {
+                reducedNum /= 1000;
+                suffixIndex++;
+            }
+            
+            const sign = num < 0 ? '-' : '';
+            const formattedNum = reducedNum.toFixed(decimals);
+            
+            // Убираем лишние нули
+            let cleanNum = formattedNum;
+            if (decimals > 0) {
+                cleanNum = formattedNum.replace(/\.?0+$/, '');
+                if (cleanNum.endsWith('.')) {
+                    cleanNum = cleanNum.slice(0, -1);
+                }
+            }
+            
+            return sign + cleanNum + suffixes[suffixIndex];
+        }
+        
+        function formatCurrency(amount) {
+            return '$' + formatNumber(amount);
+        }
+        
         // Инициализация
         function initTelegram() {
             if (window.Telegram && Telegram.WebApp) {
@@ -349,21 +424,6 @@
             } else {
                 currentUserId = 'web_user_' + Math.random().toString(36).substr(2, 9);
             }
-        }
-        
-        // Форматирование чисел
-        function formatNumber(num, decimals = 2) {
-            if (num === 0 || !num) return '0';
-            const absNum = Math.abs(num);
-            if (absNum >= 1e12) return (num / 1e12).toFixed(decimals) + 'T';
-            else if (absNum >= 1e9) return (num / 1e9).toFixed(decimals) + 'B';
-            else if (absNum >= 1e6) return (num / 1e6).toFixed(decimals) + 'M';
-            else if (absNum >= 1e3) return (num / 1e3).toFixed(decimals) + 'K';
-            else return num.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
-        }
-        
-        function formatCurrency(amount) {
-            return '$' + formatNumber(amount);
         }
         
         // Уведомления
