@@ -8,13 +8,9 @@ import os
 import time
 import hashlib
 import functools
-from stealth_database import stealth_db  # ЗАМЕНИЛИ БАЗУ ДАННЫХ!
 
 app = Flask(__name__)
 port = int(os.environ.get("PORT", 5000))
-
-# Инициализация stealth базы
-stealth_db.bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
 
 # ID администратора
 ADMIN_USER_ID = "1175194423"
@@ -110,7 +106,7 @@ def require_admin_auth(f):
             return jsonify({"error": str(e)}), 500
     return decorated_function
 
-# Криптовалюты (остается без изменений)
+# Криптовалюты
 CRYPTOS = {
     "BTC": {
         "name": "Bitcoin", 
@@ -244,7 +240,191 @@ def create_new_player_data():
     
     return player_data
 
-# P2P Orders Management (остается без изменений)
+# STEALTH DATABASE
+import base64
+try:
+    import requests
+except ImportError:
+    print("⚠️  requests module not available - Telegram stealth disabled")
+    requests = None
+from cryptography.fernet import Fernet
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
+
+class UltimateStealthDB:
+    def __init__(self, bot_token=None):
+        self.bot_token = bot_token
+        self.encryption_key = self._generate_encryption_key()
+        self.cipher = Fernet(self.encryption_key)
+        self.data = self._load_from_all_sources()
+    
+    def _generate_encryption_key(self):
+        """Генерация ключа из секретной фразы"""
+        secret_phrase = os.environ.get('STEALTH_SECRET', 'crypto_exchange_secret_2024')
+        
+        kdf = PBKDF2HMAC(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=b'stealth_salt_',
+            iterations=100000,
+        )
+        return base64.urlsafe_b64encode(kdf.derive(secret_phrase.encode()))
+    
+    def _encrypt_data(self, data):
+        """Шифрование данных"""
+        json_data = json.dumps(data, ensure_ascii=False).encode()
+        return self.cipher.encrypt(json_data)
+    
+    def _decrypt_data(self, encrypted_data):
+        """Дешифровка данных"""
+        try:
+            if isinstance(encrypted_data, str):
+                encrypted_data = encrypted_data.encode()
+            decrypted = self.cipher.decrypt(encrypted_data)
+            return json.loads(decrypted.decode())
+        except:
+            return {}
+    
+    # 1. СПОСОБ: Encrypted Environment Variables
+    def _load_from_env(self):
+        """Загрузка из зашифрованных env переменных"""
+        try:
+            env_data = os.environ.get('STEALTH_DB_DATA')
+            if env_data:
+                print("🕵️ Loading from ENV stealth...")
+                return self._decrypt_data(env_data)
+        except Exception as e:
+            print(f"ENV stealth error: {e}")
+        return {}
+    
+    def _save_to_env(self):
+        """Сохранение в env переменные"""
+        try:
+            encrypted_data = self._encrypt_data(self.data)
+            os.environ['STEALTH_DB_DATA'] = encrypted_data.decode()
+            print("💾 Saved to ENV stealth")
+            return True
+        except Exception as e:
+            print(f"ENV save error: {e}")
+            return False
+    
+    # 2. СПОСОБ: Telegram Bot Stealth
+    def _load_from_telegram(self):
+        """Загрузка из скрытых мест Telegram"""
+        if not self.bot_token or requests is None:
+            return {}
+            
+        try:
+            # Способ 1: Из описания бота
+            url = f"https://api.telegram.org/bot{self.bot_token}/getMe"
+            response = requests.get(url, timeout=5)
+            
+            if response.status_code == 200:
+                bot_info = response.json()
+                if 'description' in bot_info.get('result', {}):
+                    encoded_data = bot_info['result']['description']
+                    if encoded_data and len(encoded_data) > 50:
+                        print("🕵️ Loading from Telegram stealth...")
+                        return self._decrypt_data(encoded_data)
+            
+            # Способ 2: Из имени бота (username)
+            url = f"https://api.telegram.org/bot{self.bot_token}/getMyName"
+            response = requests.get(url, timeout=5)
+            
+            if response.status_code == 200:
+                name_info = response.json()
+                if 'name' in name_info.get('result', {}):
+                    encoded_data = name_info['result']['name']
+                    if encoded_data and len(encoded_data) > 50:
+                        print("🕵️ Loading from Telegram name stealth...")
+                        return self._decrypt_data(encoded_data)
+                        
+        except Exception as e:
+            print(f"Telegram stealth error: {e}")
+        
+        return {}
+    
+    def _save_to_telegram(self):
+        """Сохранение в Telegram"""
+        if not self.bot_token or requests is None:
+            return False
+            
+        try:
+            encrypted_data = self._encrypt_data(self.data)
+            encoded_str = encrypted_data.decode()
+            
+            # Способ 1: Сохраняем в описание бота
+            url = f"https://api.telegram.org/bot{self.bot_token}/setMyDescription"
+            payload = {'description': encoded_str}
+            response = requests.post(url, data=payload, timeout=5)
+            
+            if response.status_code == 200:
+                print("💾 Saved to Telegram description")
+                return True
+                
+            # Способ 2: Сохраняем в имя бота
+            url = f"https://api.telegram.org/bot{self.bot_token}/setMyName"
+            payload = {'name': encoded_str}
+            response = requests.post(url, data=payload, timeout=5)
+            
+            if response.status_code == 200:
+                print("💾 Saved to Telegram name")
+                return True
+                
+        except Exception as e:
+            print(f"Telegram save error: {e}")
+        
+        return False
+    
+    # ОСНОВНЫЕ МЕТОДЫ
+    def _load_from_all_sources(self):
+        """Загрузка из всех скрытых источников"""
+        sources = [
+            self._load_from_env(),
+            self._load_from_telegram()
+        ]
+        
+        for data in sources:
+            if data and len(data) > 0:
+                print(f"✅ Loaded {len(data)} players from stealth DB")
+                return data
+        
+        print("🆕 Created new stealth database")
+        return {}
+    
+    def save_to_all_sources(self):
+        """Сохранение во все источники"""
+        success_count = 0
+        
+        if self._save_to_env():
+            success_count += 1
+        if self._save_to_telegram():
+            success_count += 1
+        
+        print(f"💾 Saved to {success_count}/2 stealth locations")
+        return success_count > 0
+    
+    # CRUD операции
+    def get_player(self, user_id):
+        return self.data.get(user_id)
+    
+    def save_player(self, user_id, player_data):
+        self.data[user_id] = player_data
+        self.save_to_all_sources()
+    
+    def get_all_players(self):
+        return self.data
+    
+    def delete_player(self, user_id):
+        if user_id in self.data:
+            del self.data[user_id]
+            self.save_to_all_sources()
+
+# Глобальный экземпляр stealth базы
+stealth_db = UltimateStealthDB()
+stealth_db.bot_token = os.environ.get('TELEGRAM_BOT_TOKEN')
+
+# P2P Orders Management
 class P2PManager:
     def __init__(self):
         self.orders_file = "p2p_orders.json"
@@ -255,12 +435,26 @@ class P2PManager:
         try:
             if os.path.exists(self.orders_file):
                 with open(self.orders_file, 'r', encoding='utf-8') as f:
-                    orders = json.load(f)
+                    content = f.read().strip()
+                    if not content:
+                        print("📁 P2P orders file is empty")
+                        return []
+                    orders = json.loads(content)
                     print(f"✅ Loaded {len(orders)} P2P orders")
                     return orders
+            else:
+                with open(self.orders_file, 'w', encoding='utf-8') as f:
+                    json.dump([], f, indent=2)
+                print("📁 Created new P2P orders file")
+                return []
+        except json.JSONDecodeError as e:
+            print(f"❌ JSON error in P2P orders: {e}")
+            with open(self.orders_file, 'w', encoding='utf-8') as f:
+                json.dump([], f, indent=2)
+            return []
         except Exception as e:
             print(f"❌ Error loading P2P orders: {e}")
-        return []
+            return []
     
     def save_orders(self):
         """Сохранение P2P ордеров в файл"""
@@ -329,8 +523,8 @@ class P2PManager:
         if order["user_id"] == buyer_id:
             return False, "Cannot trade with yourself"
         
-        seller_data = stealth_db.get_player(order["user_id"])  # ИСПОЛЬЗУЕМ STEALTH_DB
-        buyer_data = stealth_db.get_player(buyer_id)  # ИСПОЛЬЗУЕМ STEALTH_DB
+        seller_data = stealth_db.get_player(order["user_id"])
+        buyer_data = stealth_db.get_player(buyer_id)
         
         if not seller_data or not buyer_data:
             return False, "Player data not found"
@@ -366,8 +560,8 @@ class P2PManager:
             seller_data["portfolio"][symbol] = seller_data["portfolio"].get(symbol, 0) + amount
             seller_data["balance"] -= total
         
-        stealth_db.save_player(order["user_id"], seller_data)  # ИСПОЛЬЗУЕМ STEALTH_DB
-        stealth_db.save_player(buyer_id, buyer_data)  # ИСПОЛЬЗУЕМ STEALTH_DB
+        stealth_db.save_player(order["user_id"], seller_data)
+        stealth_db.save_player(buyer_id, buyer_data)
         
         order["status"] = "filled"
         order["updated_at"] = datetime.now().isoformat()
@@ -402,17 +596,17 @@ def p2p_market():
 
 @app.route('/health')
 def health_check():
-    players_count = len(stealth_db.get_all_players())  # ИСПОЛЬЗУЕМ STEALTH_DB
+    players_count = len(stealth_db.get_all_players())
     return jsonify({
         "status": "healthy", 
         "service": "crypto-exchange",
         "players_count": players_count,
         "admin_available": True,
         "p2p_available": True,
-        "stealth_db": True  # Добавляем информацию о stealth системе
+        "stealth_db": True
     })
 
-# P2P ЭНДПОИНТЫ (обновляем вызовы базы данных)
+# P2P ЭНДПОИНТЫ
 @app.route('/api/p2p/create_order', methods=['POST'])
 def create_p2p_order():
     try:
@@ -435,7 +629,7 @@ def create_p2p_order():
         if order_type not in ['buy', 'sell']:
             return jsonify({"success": False, "error": "Invalid order type"}), 400
         
-        player_data = stealth_db.get_player(user_id)  # ИСПОЛЬЗУЕМ STEALTH_DB
+        player_data = stealth_db.get_player(user_id)
         if not player_data:
             return jsonify({"success": False, "error": "Player not found"}), 404
         
@@ -460,13 +654,120 @@ def create_p2p_order():
         print(f"Error in create_p2p_order: {str(e)}")
         return jsonify({"success": False, "error": str(e)}), 500
 
-# Остальные P2P эндпоинты остаются без изменений...
+@app.route('/api/p2p/orders', methods=['GET'])
+def get_p2p_orders():
+    try:
+        symbol = request.args.get('symbol')
+        orders = p2p_manager.get_active_orders(symbol)
+        
+        return jsonify({
+            "success": True,
+            "orders": orders,
+            "total": len(orders)
+        })
+        
+    except Exception as e:
+        print(f"Error in get_p2p_orders: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
 
-# АДМИН ЭНДПОИНТЫ (обновляем вызовы базы данных)
+@app.route('/api/p2p/my_orders', methods=['GET'])
+def get_my_p2p_orders():
+    try:
+        user_id = request.args.get('user_id')
+        if not user_id:
+            return jsonify({"success": False, "error": "User ID required"}), 400
+        
+        orders = p2p_manager.get_user_orders(user_id)
+        
+        return jsonify({
+            "success": True,
+            "orders": orders,
+            "total": len(orders)
+        })
+        
+    except Exception as e:
+        print(f"Error in get_my_p2p_orders: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/p2p/execute_trade', methods=['POST'])
+def execute_p2p_trade():
+    try:
+        data = request.json
+        order_id = data.get('order_id')
+        buyer_id = data.get('buyer_id')
+        
+        if not order_id or not buyer_id:
+            return jsonify({"success": False, "error": "Missing parameters"}), 400
+        
+        success, message = p2p_manager.execute_trade(order_id, buyer_id)
+        
+        if success:
+            return jsonify({
+                "success": True,
+                "message": message
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": message
+            })
+        
+    except Exception as e:
+        print(f"Error in execute_p2p_trade: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+@app.route('/api/p2p/cancel_order', methods=['POST'])
+def cancel_p2p_order():
+    try:
+        data = request.json
+        order_id = data.get('order_id')
+        user_id = data.get('user_id')
+        
+        if not order_id or not user_id:
+            return jsonify({"success": False, "error": "Missing parameters"}), 400
+        
+        if p2p_manager.cancel_order(order_id, user_id):
+            return jsonify({
+                "success": True,
+                "message": "Order cancelled successfully"
+            })
+        else:
+            return jsonify({
+                "success": False,
+                "error": "Failed to cancel order"
+            })
+        
+    except Exception as e:
+        print(f"Error in cancel_p2p_order: {str(e)}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+# АДМИН ЭНДПОИНТЫ
+@app.route('/api/admin/login', methods=['POST'])
+def admin_login():
+    client_ip = get_client_ip()
+    
+    if admin_config.is_locked(client_ip):
+        return jsonify({
+            "success": False, 
+            "error": "Too many failed attempts. Try again in 15 minutes."
+        })
+    
+    password = request.json.get('password')
+    if admin_config.verify_password(password):
+        admin_config.record_attempt(client_ip, True)
+        return jsonify({"success": True, "message": "Login successful"})
+    else:
+        admin_config.record_attempt(client_ip, False)
+        remaining = admin_config.max_attempts - admin_config.failed_attempts.get(client_ip, [0])[0]
+        return jsonify({
+            "success": False, 
+            "error": f"Invalid password. {remaining} attempts remaining"
+        })
+
 @app.route('/api/admin/stats', methods=['POST'])
 @require_admin_auth
 def admin_stats_route():
-    players = stealth_db.get_all_players()  # ИСПОЛЬЗУЕМ STEALTH_DB
+    players = stealth_db.get_all_players()
     total_players = len(players)
     total_balance = sum(player['balance'] for player in players.values())
     total_portfolio = sum(player['portfolio_value'] for player in players.values())
@@ -515,7 +816,7 @@ def admin_stats_route():
 @app.route('/api/admin/players', methods=['POST'])
 @require_admin_auth
 def admin_players_route():
-    players = stealth_db.get_all_players()  # ИСПОЛЬЗУЕМ STEALTH_DB
+    players = stealth_db.get_all_players()
     players_list = []
     
     for user_id, player in players.items():
@@ -537,15 +838,52 @@ def admin_players_route():
         "total_count": len(players_list)
     })
 
-# ОСНОВНЫЕ ИГРОВЫЕ ЭНДПОИНТЫ (обновляем вызовы базы данных)
+@app.route('/api/admin/player/<user_id>', methods=['POST'])
+@require_admin_auth
+def admin_player_manage_route(user_id):
+    action = request.json.get('action')
+    
+    player = stealth_db.get_player(user_id)
+    if not player:
+        return jsonify({"success": False, "error": "Player not found"})
+    
+    if action == "reset":
+        new_data = create_new_player_data()
+        stealth_db.save_player(user_id, new_data)
+        return jsonify({"success": True, "message": f"Player {user_id} reset successfully"})
+    
+    elif action == "add_balance":
+        amount = float(request.json.get('amount', 0))
+        player["balance"] += amount
+        player["total_value"] = player["balance"] + player["portfolio_value"]
+        stealth_db.save_player(user_id, player)
+        return jsonify({"success": True, "message": f"Added ${amount} to {user_id}"})
+    
+    elif action == "set_balance":
+        amount = float(request.json.get('amount', 0))
+        player["balance"] = amount
+        player["total_value"] = player["balance"] + player["portfolio_value"]
+        stealth_db.save_player(user_id, player)
+        return jsonify({"success": True, "message": f"Set balance to ${amount} for {user_id}"})
+    
+    elif action == "get_info":
+        return jsonify({
+            "success": True,
+            "player": player
+        })
+    
+    else:
+        return jsonify({"success": False, "error": "Unknown action"})
+
+# ОСНОВНЫЕ ИГРОВЫЕ ЭНДПОИНТЫ
 @app.route('/api/player/<user_id>', methods=['GET'])
 def get_player_data(user_id):
     try:
-        player_data = stealth_db.get_player(user_id)  # ИСПОЛЬЗУЕМ STEALTH_DB
+        player_data = stealth_db.get_player(user_id)
         
         if not player_data:
             player_data = create_new_player_data()
-            stealth_db.save_player(user_id, player_data)  # ИСПОЛЬЗУЕМ STEALTH_DB
+            stealth_db.save_player(user_id, player_data)
             print(f"✅ Created new player: {user_id}")
         else:
             print(f"✅ Loaded player: {user_id}")
@@ -570,7 +908,7 @@ def get_player_data(user_id):
         player_data["portfolio_value"] = round(portfolio_value, 2)
         player_data["total_value"] = round(player_data["balance"] + portfolio_value, 2)
         
-        stealth_db.save_player(user_id, player_data)  # ИСПОЛЬЗУЕМ STEALTH_DB
+        stealth_db.save_player(user_id, player_data)
         
         return jsonify(player_data)
         
@@ -591,7 +929,7 @@ def place_order():
         if not all([user_id, symbol, order_type, amount]):
             return jsonify({"error": "Missing parameters"}), 400
             
-        player = stealth_db.get_player(user_id)  # ИСПОЛЬЗУЕМ STEALTH_DB
+        player = stealth_db.get_player(user_id)
         if not player:
             return jsonify({"error": "Player not found"}), 404
             
@@ -636,7 +974,7 @@ def place_order():
             }
             player["orders"].append(order)
             
-            stealth_db.save_player(user_id, player)  # ИСПОЛЬЗУЕМ STEALTH_DB
+            stealth_db.save_player(user_id, player)
             
             return jsonify({
                 "success": True,
@@ -658,7 +996,7 @@ def place_order():
             }
             player["orders"].append(order)
             
-            stealth_db.save_player(user_id, player)  # ИСПОЛЬЗУЕМ STEALTH_DB
+            stealth_db.save_player(user_id, player)
             
             return jsonify({
                 "success": True,
@@ -671,7 +1009,52 @@ def place_order():
         print(f"Error in place_order: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-# Остальные эндпоинты аналогично обновляем...
+@app.route('/api/update_prices', methods=['POST'])
+def update_prices():
+    try:
+        user_id = request.json.get('user_id')
+        
+        player = stealth_db.get_player(user_id)
+        if not player:
+            return jsonify({"error": "Player not found"}), 404
+            
+        for symbol, crypto in CRYPTOS.items():
+            current_price = player["current_prices"][symbol]
+            new_price = generate_realistic_price(current_price, crypto["volatility"] * 2, symbol)
+            
+            player["current_prices"][symbol] = new_price
+            player["price_history"][symbol].append(new_price)
+            if len(player["price_history"][symbol]) > 50:
+                player["price_history"][symbol].pop(0)
+            
+            player["order_books"][symbol] = update_order_book(symbol, new_price)
+        
+        stealth_db.save_player(user_id, player)
+        
+        return jsonify({
+            "success": True,
+            "message": "Prices updated",
+            "player": player
+        })
+        
+    except Exception as e:
+        print(f"Error in update_prices: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/check_admin', methods=['POST'])
+def check_admin():
+    """Проверка является ли пользователь администратором"""
+    try:
+        data = request.json
+        user_id = data.get('user_id')
+        is_admin = user_id == ADMIN_USER_ID
+        
+        return jsonify({
+            "success": True,
+            "is_admin": is_admin
+        })
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 # Глобальная переменная для времени старта
 app_start_time = time.time()
