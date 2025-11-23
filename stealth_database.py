@@ -1,7 +1,12 @@
+# [file name]: stealth_database.py
 import os
 import json
 import base64
-import requests
+try:
+    import requests
+except ImportError:
+    print("⚠️  requests module not available - Telegram stealth disabled")
+    requests = None
 from cryptography.fernet import Fernet
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -66,7 +71,7 @@ class UltimateStealthDB:
     # 2. СПОСОБ: Telegram Bot Stealth
     def _load_from_telegram(self):
         """Загрузка из скрытых мест Telegram"""
-        if not self.bot_token:
+        if not self.bot_token or requests is None:
             return {}
             
         try:
@@ -101,7 +106,7 @@ class UltimateStealthDB:
     
     def _save_to_telegram(self):
         """Сохранение в Telegram"""
-        if not self.bot_token:
+        if not self.bot_token or requests is None:
             return False
             
         try:
