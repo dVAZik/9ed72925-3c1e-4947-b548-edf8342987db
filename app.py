@@ -16,7 +16,7 @@ app = Flask(__name__)
 port = int(os.environ.get("PORT", 5000))
 
 # ID администратора
-ADMIN_USER_ID = "1175194423" 
+ADMIN_USER_ID = "1175194423"
 
 # Безопасная конфигурация администратора
 class AdminConfig:
