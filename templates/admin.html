@@ -441,6 +441,13 @@
         .health-good { background: var(--positive); }
         .health-warning { background: var(--warning); }
         .health-critical { background: var(--negative); }
+        
+        .mining-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -474,6 +481,7 @@
                 <button class="tab-btn" onclick="showTab('bulkActions')">⚡ Bulk Actions</button>
                 <button class="tab-btn" onclick="showTab('system')">🔧 System Tools</button>
                 <button class="tab-btn" onclick="showTab('advanced')">🚀 Advanced</button>
+                <button class="tab-btn" onclick="showTab('mining')">⛏️ Mining</button>
             </div>
             
             <!-- Overview Tab -->
@@ -503,6 +511,23 @@
                     <div class="section-title">💰 Crypto Statistics</div>
                     <div class="crypto-stats" id="cryptoStats">
                         <!-- Will be populated by JavaScript -->
+                    </div>
+                    
+                    <!-- Mining Statistics -->
+                    <div class="section-title">⛏️ Mining Statistics</div>
+                    <div class="mining-stats" id="miningStatsOverview">
+                        <div class="stat-card">
+                            <div class="stat-value compact-number" id="totalMiningRewards">$0</div>
+                            <div class="stat-label">Total Mined Value</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="playersMining">0</div>
+                            <div class="stat-label">Active Miners</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value" id="avgMiningLevel">1.0</div>
+                            <div class="stat-label">Avg Mining Level</div>
+                        </div>
                     </div>
                     
                     <!-- Top Players -->
@@ -575,7 +600,7 @@
                         <div class="action-card">
                             <div class="action-title">Reset All Players</div>
                             <p style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 10px;">
-                                Reset all players to initial state (balance: $10,000)
+                                Reset all players to initial state (balance: $500)
                             </p>
                             <button class="btn btn-danger" onclick="bulkAction('reset_all_players')">Reset All Players</button>
                         </div>
@@ -695,8 +720,66 @@
                         </div>
                     </div>
                     
+                    <div class="section-subtitle">⚙️ Economy Settings</div>
+                    <div class="advanced-actions">
+                        <div class="action-card">
+                            <div class="action-title">Adjust Trading Fees</div>
+                            <div class="input-group">
+                                <label class="input-label">New Fee Percentage</label>
+                                <input type="number" class="input-field" id="tradingFee" placeholder="0.25" step="0.01" min="0" max="10">
+                            </div>
+                            <button class="btn btn-warning" onclick="adjustTradingFees()">Set Trading Fee</button>
+                        </div>
+                        
+                        <div class="action-card">
+                            <div class="action-title">Get Economy Stats</div>
+                            <p style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 10px;">
+                                View detailed economy statistics and wealth distribution
+                            </p>
+                            <button class="btn btn-info" onclick="systemAdvancedAction('get_economy_stats')">Get Economy Stats</button>
+                        </div>
+                    </div>
+                    
                     <div id="advancedContent">
                         <div class="loading">Advanced features will be displayed here</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Mining Tab -->
+            <div class="tab-content" id="miningTab">
+                <div class="section">
+                    <div class="section-title">⛏️ Mining Management</div>
+                    
+                    <div class="section-subtitle">🔧 Mining Configuration</div>
+                    <div class="advanced-actions">
+                        <div class="action-card">
+                            <div class="action-title">Adjust Mining Difficulty</div>
+                            <div class="input-group">
+                                <label class="input-label">Cryptocurrency</label>
+                                <select class="input-field" id="miningSymbol">
+                                    <option value="">All Cryptocurrencies</option>
+                                    <option value="BTC">Bitcoin (BTC)</option>
+                                    <option value="ETH">Ethereum (ETH)</option>
+                                    <option value="BNB">Binance Coin (BNB)</option>
+                                    <option value="XRP">Ripple (XRP)</option>
+                                    <option value="ADA">Cardano (ADA)</option>
+                                    <option value="DOGE">Dogecoin (DOGE)</option>
+                                    <option value="SOL">Solana (SOL)</option>
+                                    <option value="DOT">Polkadot (DOT)</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label class="input-label">New Difficulty</label>
+                                <input type="number" class="input-field" id="miningDifficulty" placeholder="100" step="1" min="1" max="1000">
+                            </div>
+                            <button class="btn btn-warning" onclick="adjustMiningDifficulty()">Set Mining Difficulty</button>
+                        </div>
+                    </div>
+                    
+                    <div class="section-subtitle">📊 Mining Statistics</div>
+                    <div id="miningStatsContent">
+                        <div class="loading">Mining statistics will be displayed here</div>
                     </div>
                 </div>
             </div>
@@ -777,6 +860,8 @@
                 loadPlayers();
             } else if (tabName === 'overview') {
                 loadStats();
+            } else if (tabName === 'mining') {
+                loadMiningStats();
             }
         }
         
@@ -841,6 +926,56 @@
             } catch (error) {
                 showNotification('Failed to load stats: ' + error.message, 'error');
             }
+        }
+        
+        // Загрузка статистики майнинга
+        async function loadMiningStats() {
+            try {
+                const response = await fetch('/api/admin/system/advanced', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: adminPassword, action: 'get_detailed_stats' })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    const stats = result.stats;
+                    document.getElementById('totalMiningRewards').textContent = formatCurrency(stats.mining_stats.total_mining_rewards);
+                    document.getElementById('playersMining').textContent = stats.mining_stats.players_mining;
+                    document.getElementById('avgMiningLevel').textContent = stats.mining_stats.average_mining_level.toFixed(1);
+                    
+                    // Показываем детальную статистику майнинга
+                    displayMiningStats(stats.mining_stats);
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Failed to load mining stats: ' + error.message, 'error');
+            }
+        }
+        
+        function displayMiningStats(miningStats) {
+            const content = document.getElementById('miningStatsContent');
+            
+            let html = `
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value">${formatCurrency(miningStats.total_mining_rewards)}</div>
+                        <div class="stat-label">Total Mined Value</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${miningStats.players_mining}</div>
+                        <div class="stat-label">Active Miners</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${miningStats.average_mining_level.toFixed(1)}</div>
+                        <div class="stat-label">Avg Mining Level</div>
+                    </div>
+                </div>
+            `;
+            
+            content.innerHTML = html;
         }
         
         // Подробная статистика
@@ -919,6 +1054,24 @@
                         <div class="stat-card">
                             <div class="stat-value">${stats.p2p_stats.filled_orders}</div>
                             <div class="stat-label">Filled</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="stats-section">
+                    <div class="section-subtitle">⛏️ Mining Statistics</div>
+                    <div class="stats-grid-small">
+                        <div class="stat-card">
+                            <div class="stat-value compact-number">${formatCurrency(stats.mining_stats.total_mining_rewards)}</div>
+                            <div class="stat-label">Total Mined</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.mining_stats.players_mining}</div>
+                            <div class="stat-label">Active Miners</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-value">${stats.mining_stats.average_mining_level.toFixed(1)}</div>
+                            <div class="stat-label">Avg Level</div>
                         </div>
                     </div>
                 </div>
@@ -1021,7 +1174,8 @@
                                     Balance: ${formatCurrency(player.balance)} | 
                                     Portfolio: ${formatCurrency(player.portfolio_value)} | 
                                     Total: ${formatCurrency(player.total_value)} |
-                                    Orders: ${player.orders_count}
+                                    Trades: ${player.total_trades} |
+                                    Mining: Lvl ${player.mining_level}
                                 </div>
                                 <div class="player-stats">
                                     Created: ${new Date(player.created_at).toLocaleDateString()} |
@@ -1072,13 +1226,29 @@
                         }
                     }
                     
+                    let miningHtml = '';
+                    if (player.mining) {
+                        miningHtml = `
+                            <div class="section-subtitle">⛏️ Mining Stats</div>
+                            <div class="player-stats">
+                                Equipment: ${player.mining.equipment_level} | 
+                                Power: ${player.mining.mining_power}x |
+                                Energy: ${player.mining.energy}/100
+                            </div>
+                            <div class="player-stats">
+                                Total Mined: ${Object.entries(player.mining.total_mined).filter(([_, v]) => v > 0).map(([k, v]) => `${k}: ${formatNumber(v, 6)}`).join(', ')}
+                            </div>
+                        `;
+                    }
+                    
                     content.innerHTML = `
                         <div class="player-info">
                             <div class="player-id">User ID: ${userId}</div>
                             <div class="player-stats">Balance: ${formatCurrency(player.balance)}</div>
                             <div class="player-stats">Portfolio Value: ${formatCurrency(player.portfolio_value)}</div>
                             <div class="player-stats">Total Value: ${formatCurrency(player.total_value)}</div>
-                            <div class="player-stats">Orders: ${player.orders.length}</div>
+                            <div class="player-stats">Total Trades: ${player.stats?.total_trades || 0}</div>
+                            <div class="player-stats">Login Streak: ${player.stats?.login_streak || 1}</div>
                             <div class="player-stats">Created: ${new Date(player.created_at).toLocaleString()}</div>
                             <div class="player-stats">Last Login: ${new Date(player.last_login).toLocaleString()}</div>
                         </div>
@@ -1087,6 +1257,8 @@
                         <div style="margin-bottom: 20px;">
                             ${portfolioHtml || '<div>No assets in portfolio</div>'}
                         </div>
+                        
+                        ${miningHtml}
                         
                         <div class="section-subtitle">Quick Actions</div>
                         <div class="player-actions">
@@ -1463,6 +1635,9 @@
                     } else if (action === 'get_system_health') {
                         displaySystemHealth(result.health);
                         showTab('advanced');
+                    } else if (action === 'get_economy_stats') {
+                        displayEconomyStats(result.economy_stats);
+                        showTab('advanced');
                     } else {
                         showNotification(result.message);
                         // Перезагружаем данные если нужно
@@ -1476,6 +1651,71 @@
                 }
             } catch (error) {
                 showNotification('Advanced action failed: ' + error.message, 'error');
+            }
+        }
+        
+        // Настройка комиссий
+        async function adjustTradingFees() {
+            const fee = parseFloat(document.getElementById('tradingFee').value);
+            if (!fee || fee < 0 || fee > 10) {
+                showNotification('Please enter valid fee percentage (0-10)', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/admin/system/advanced', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        password: adminPassword, 
+                        action: 'adjust_trading_fees',
+                        fee: fee / 100
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification(result.message);
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Failed to adjust fees: ' + error.message, 'error');
+            }
+        }
+        
+        // Настройка сложности майнинга
+        async function adjustMiningDifficulty() {
+            const symbol = document.getElementById('miningSymbol').value;
+            const difficulty = parseFloat(document.getElementById('miningDifficulty').value);
+            
+            if (!difficulty || difficulty < 1 || difficulty > 1000) {
+                showNotification('Please enter valid difficulty (1-1000)', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/admin/system/advanced', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        password: adminPassword, 
+                        action: 'adjust_mining_difficulty',
+                        symbol: symbol || null,
+                        difficulty: difficulty
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification(result.message);
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Failed to adjust mining difficulty: ' + error.message, 'error');
             }
         }
         
@@ -1519,6 +1759,55 @@
                     <div class="stat-card">
                         <div class="stat-value">${Math.round(health.system_uptime / 60)}m</div>
                         <div class="stat-label">Uptime</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function displayEconomyStats(economyStats) {
+            const advancedContent = document.getElementById('advancedContent');
+            
+            const top10Wealth = economyStats.wealth_distribution.top_10_percent ? formatCurrency(economyStats.wealth_distribution.top_10_percent) : '$0';
+            const bottom10Wealth = economyStats.wealth_distribution.bottom_10_percent ? formatCurrency(economyStats.wealth_distribution.bottom_10_percent) : '$0';
+            
+            advancedContent.innerHTML = `
+                <div class="section-subtitle">📈 Economy Overview</div>
+                <div class="stats-grid-small">
+                    <div class="stat-card">
+                        <div class="stat-value">${economyStats.total_players}</div>
+                        <div class="stat-label">Total Players</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value compact-number">${formatCurrency(economyStats.total_wealth)}</div>
+                        <div class="stat-label">Total Wealth</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value compact-number">${formatCurrency(economyStats.average_balance)}</div>
+                        <div class="stat-label">Avg Balance</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${economyStats.total_trades}</div>
+                        <div class="stat-label">Total Trades</div>
+                    </div>
+                </div>
+                
+                <div class="section-subtitle">💰 Wealth Distribution</div>
+                <div class="stats-grid-small">
+                    <div class="stat-card">
+                        <div class="stat-value compact-number">${top10Wealth}</div>
+                        <div class="stat-label">Top 10% Wealth</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value compact-number">${bottom10Wealth}</div>
+                        <div class="stat-label">Bottom 10% Wealth</div>
+                    </div>
+                </div>
+                
+                <div class="section-subtitle">⛏️ Mining Activity</div>
+                <div class="stats-grid-small">
+                    <div class="stat-card">
+                        <div class="stat-value compact-number">${formatNumber(economyStats.mining_activity, 2)}</div>
+                        <div class="stat-label">Total Mined</div>
                     </div>
                 </div>
             `;
