@@ -83,7 +83,7 @@
         /* Navigation */
         .nav-buttons {
             display: grid;
-            grid-template-columns: 1fr 1fr;
+            grid-template-columns: 1fr 1fr 1fr;
             gap: 10px;
             margin: 20px;
         }
@@ -120,6 +120,10 @@
         
         .nav-btn.trade {
             background: linear-gradient(45deg, #627eea, #8a2be2);
+        }
+        
+        .nav-btn.mining {
+            background: linear-gradient(45deg, #ffa726, #ff9800);
         }
         
         /* Market Ticker */
@@ -325,6 +329,12 @@
             margin-bottom: 16px;
         }
         
+        .bonus-action {
+            background: linear-gradient(45deg, #ffd700, #ffa500);
+            color: #000;
+            margin-bottom: 16px;
+        }
+        
         .action-btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
@@ -451,6 +461,23 @@
         .hidden {
             display: none !important;
         }
+        
+        .stats-bar {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            font-size: 0.8em;
+            color: var(--text-secondary);
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
     </style>
 </head>
 <body>
@@ -460,7 +487,7 @@
             <div class="exchange-header">
                 <div class="logo">CRYPTO EXCHANGE</div>
                 <div class="user-balance">
-                    <div class="balance-amount compact-number" id="totalValue">$10K</div>
+                    <div class="balance-amount compact-number" id="totalValue">$500</div>
                     <div class="balance-label">Total Balance</div>
                 </div>
             </div>
@@ -469,7 +496,7 @@
                 <div style="display: flex; justify-content: space-between;">
                     <div>
                         <div class="balance-label">Available</div>
-                        <div class="balance-amount compact-number" id="availableBalance">$10K</div>
+                        <div class="balance-amount compact-number" id="availableBalance">$500</div>
                     </div>
                     <div style="text-align: right;">
                         <div class="balance-label">24h P&L</div>
@@ -477,16 +504,41 @@
                     </div>
                 </div>
             </div>
+            
+            <div class="stats-bar">
+                <div class="stat-item">
+                    <div class="stat-label">Trades</div>
+                    <div class="stat-value" id="totalTrades">0</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Streak</div>
+                    <div class="stat-value" id="loginStreak">1</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Mined</div>
+                    <div class="stat-value" id="totalMined">0</div>
+                </div>
+            </div>
         </div>
         
         <!-- Navigation Buttons -->
         <div class="nav-buttons">
             <a href="/p2p" class="nav-btn p2p">
-                🤝 P2P Market
+                🤝 P2P
+            </a>
+            <a href="/mining" class="nav-btn mining">
+                ⛏️ Mining
             </a>
             <a href="/admin" class="nav-btn admin hidden" id="adminBtn">
-                🔐 Admin Panel
+                🔐 Admin
             </a>
+        </div>
+        
+        <!-- Daily Bonus -->
+        <div class="trading-view">
+            <button class="action-btn bonus-action" onclick="claimDailyBonus()" id="dailyBonusBtn">
+                🎁 Claim Daily Bonus
+            </button>
         </div>
         
         <!-- Market Ticker -->
@@ -550,7 +602,7 @@
                 </div>
                 
                 <div class="input-group">
-                    <label class="input-label">Total</label>
+                    <label class="input-label">Total <span id="feeInfo" style="color: var(--text-secondary); font-size: 0.8em;">(incl. fee)</span></label>
                     <input type="text" class="input-field" id="orderTotal" placeholder="$0.00" readonly>
                 </div>
                 
@@ -564,7 +616,7 @@
             <div class="section-title">Portfolio</div>
             <div class="portfolio-grid" id="portfolioGrid">
                 <div class="empty-portfolio">
-                    No assets in portfolio. Start trading!
+                    No assets in portfolio. Start trading or mining!
                 </div>
             </div>
         </div>
@@ -718,11 +770,50 @@
                 currentPlayerData = marketData;
                 updateDisplay(marketData);
                 updateChart();
+                
+                // Обновляем кнопку ежедневного бонуса
+                updateBonusButton(marketData);
+                
             } catch (error) {
                 console.error('Error:', error);
                 showNotification('Connection error');
             } finally {
                 showLoading(false);
+            }
+        }
+        
+        // Ежедневный бонус
+        async function claimDailyBonus() {
+            try {
+                const userId = getUserId();
+                const response = await fetch(`${baseUrl}/api/daily_bonus`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: userId })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification(result.message);
+                    loadMarketData(); // Перезагружаем данные
+                } else {
+                    showNotification(result.error);
+                }
+            } catch (error) {
+                console.error('Bonus error:', error);
+                showNotification('Failed to claim bonus');
+            }
+        }
+        
+        function updateBonusButton(playerData) {
+            const bonusBtn = document.getElementById('dailyBonusBtn');
+            if (playerData.stats && playerData.stats.daily_bonus_claimed) {
+                bonusBtn.textContent = '✅ Bonus Claimed Today';
+                bonusBtn.disabled = true;
+            } else {
+                bonusBtn.textContent = `🎁 Claim Daily Bonus (Streak: ${playerData.stats?.login_streak || 1})`;
+                bonusBtn.disabled = false;
             }
         }
         
@@ -759,10 +850,18 @@
             document.getElementById('totalValue').textContent = formatCurrency(data.total_value);
             document.getElementById('availableBalance').textContent = formatCurrency(data.balance);
             
-            const profit = data.total_value - 10000;
+            const profit = data.total_value - 500;
             const profitElement = document.getElementById('profitLoss');
             profitElement.textContent = (profit >= 0 ? '+' : '-') + formatCurrency(Math.abs(profit), false);
             profitElement.style.color = profit >= 0 ? 'var(--positive)' : 'var(--negative)';
+            
+            // Обновляем статистику
+            document.getElementById('totalTrades').textContent = data.stats?.total_trades || 0;
+            document.getElementById('loginStreak').textContent = data.stats?.login_streak || 1;
+            
+            // Считаем общее количество добытого
+            const totalMined = Object.values(data.mining?.total_mined || {}).reduce((sum, val) => sum + val, 0);
+            document.getElementById('totalMined').textContent = formatNumber(totalMined, 4);
             
             // Обновляем тикер
             updateTicker(data);
@@ -869,7 +968,7 @@
             }
             
             if (!hasAssets) {
-                portfolioGrid.innerHTML = '<div class="empty-portfolio">No assets in portfolio. Start trading!</div>';
+                portfolioGrid.innerHTML = '<div class="empty-portfolio">No assets in portfolio. Start trading or mining!</div>';
             }
         }
         
@@ -958,15 +1057,20 @@
             const limitPrice = parseFloat(document.getElementById('limitPrice').value) || 0;
             
             let total = 0;
+            let fee = 0;
             
             if (priceType === 'market' && currentPlayerData) {
                 const currentPrice = currentPlayerData.current_prices[selectedSymbol];
                 total = amount * currentPrice;
+                fee = total * 0.004; // 0.4% fee for market orders
             } else if (priceType === 'limit') {
                 total = amount * limitPrice;
+                fee = total * 0.0025; // 0.25% fee for limit orders
             }
             
-            document.getElementById('orderTotal').value = total > 0 ? formatCurrency(total) : '$0.00';
+            const totalWithFee = currentOrderType === 'buy' ? total + fee : total - fee;
+            
+            document.getElementById('orderTotal').value = total > 0 ? `${formatCurrency(totalWithFee)} (fee: ${formatCurrency(fee)})` : '$0.00';
         }
         
         async function placeOrder(type) {
@@ -1032,7 +1136,7 @@
         }
         
         // Авто-обновление
-        setInterval(loadMarketData, 10000);
+        setInterval(loadMarketData, 30000); // 30 секунд
         
         // Инициализация
         document.addEventListener('DOMContentLoaded', function() {
