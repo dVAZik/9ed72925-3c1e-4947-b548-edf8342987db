@@ -540,9 +540,9 @@
                                 <div>Amount: <span class="compact-number">${formatNumber(order.amount, 4)}</span></div>
                                 <div>Price: <span class="order-price compact-number">${formatCurrency(order.price)}</span></div>
                                 <div>Total: <span class="compact-number">${formatCurrency(order.total)}</span></div>
-                                <div class="order-seller">Seller: ${order.seller_username}</div>
+                                <div class="order-seller">Seller: ${order.username}</div>
                             </div>
-                            ${order.seller_id !== currentUserId ? `
+                            ${order.user_id !== currentUserId ? `
                                 <button class="btn ${order.type === 'buy' ? 'btn-sell' : 'btn-buy'}" 
                                         onclick="executeTrade(${order.id})" 
                                         style="margin-top: 10px;">
