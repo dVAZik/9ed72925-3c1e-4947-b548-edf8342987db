@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Crypto Mining - Crypto Exchange</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #111111;
+            --bg-tertiary: #1a1a1a;
+            --border: #2a2a2a;
+            --text-primary: #ffffff;
+            --text-secondary: #888888;
+            --text-accent: #00ff88;
+            --positive: #00ff88;
+            --negative: #ff4444;
+            --energy-color: #00a8ff;
+            --mining-color: #ffa726;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.5;
+            font-weight: 400;
+        }
+        
+        .container {
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+        
+        .logo {
+            font-size: 1.8em;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1.1em;
+        }
+        
+        /* Navigation */
+        .nav-buttons {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .nav-btn {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+        
+        .nav-btn:hover {
+            background: var(--bg-tertiary);
+            border-color: var(--text-accent);
+        }
+        
+        .nav-btn.trade {
+            background: linear-gradient(45deg, #627eea, #8a2be2);
+        }
+        
+        .section {
+            background: var(--bg-secondary);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+        }
+        
+        .section-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: var(--text-accent);
+        }
+        
+        /* Energy Bar */
+        .energy-bar {
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border);
+        }
+        
+        .energy-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .energy-label {
+            font-weight: 600;
+            color: var(--energy-color);
+        }
+        
+        .energy-value {
+            font-weight: 600;
+        }
+        
+        .energy-progress {
+            width: 100%;
+            height: 8px;
+            background: var(--bg-primary);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .energy-fill {
+            height: 100%;
+            background: var(--energy-color);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        /* Equipment */
+        .equipment-card {
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid var(--border);
+        }
+        
+        .equipment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .equipment-name {
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+        
+        .equipment-level {
+            background: var(--mining-color);
+            color: #000;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+        
+        .equipment-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 0.9em;
+            margin-bottom: 10px;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-weight: 600;
+            color: var(--text-accent);
+        }
+        
+        .stat-label {
+            font-size: 0.8em;
+            color: var(--text-secondary);
+        }
+        
+        /* Mining Grid */
+        .mining-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .mining-card {
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .mining-card:hover {
+            background: var(--bg-secondary);
+            border-color: var(--mining-color);
+        }
+        
+        .mining-card:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .mining-emoji {
+            font-size: 2em;
+            margin-bottom: 8px;
+        }
+        
+        .mining-symbol {
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .mining-difficulty {
+            font-size: 0.8em;
+            color: var(--text-secondary);
+        }
+        
+        .mining-reward {
+            font-size: 0.9em;
+            color: var(--text-accent);
+            margin-top: 5px;
+        }
+        
+        /* Buttons */
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+        }
+        
+        .btn-primary {
+            background: var(--mining-color);
+            color: #000;
+        }
+        
+        .btn-upgrade {
+            background: var(--positive);
+            color: #000;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        /* Stats */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .stat-card {
+            background: var(--bg-tertiary);
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+        
+        .stat-card-value {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        
+        .stat-card-label {
+            font-size: 0.8em;
+            color: var(--text-secondary);
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            z-index: 1000;
+            display: none;
+        }
+        
+        .notification.success {
+            border-color: var(--positive);
+        }
+        
+        .notification.error {
+            border-color: var(--negative);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-secondary);
+        }
+        
+        .compact-number {
+            font-feature-settings: 'tnum' 1;
+            font-variant-numeric: tabular-nums;
+        }
+        
+        .cooldown {
+            color: var(--negative);
+            font-size: 0.8em;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="logo">⛏️ Crypto Mining</div>
+            <div class="subtitle">Mine cryptocurrencies with your equipment</div>
+        </div>
+        
+        <!-- Navigation -->
+        <div class="nav-buttons">
+            <a href="/" class="nav-btn trade">
+                📊 Back to Trading
+            </a>
+        </div>
+        
+        <!-- Energy Bar -->
+        <div class="section">
+            <div class="energy-bar">
+                <div class="energy-header">
+                    <div class="energy-label">⚡ Energy</div>
+                    <div class="energy-value" id="energyValue">100/100</div>
+                </div>
+                <div class="energy-progress">
+                    <div class="energy-fill" id="energyFill" style="width: 100%;"></div>
+                </div>
+                <div style="text-align: center; margin-top: 8px; font-size: 0.8em; color: var(--text-secondary);">
+                    Regenerates 0.5 energy per minute
+                </div>
+            </div>
+            
+            <!-- Equipment -->
+            <div class="equipment-card">
+                <div class="equipment-header">
+                    <div class="equipment-name" id="equipmentName">Basic GPU</div>
+                    <div class="equipment-level" id="equipmentLevel">Level 1</div>
+                </div>
+                <div class="equipment-stats">
+                    <div class="stat-item">
+                        <div class="stat-value" id="miningPower">1.0x</div>
+                        <div class="stat-label">Mining Power</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="nextUpgradeCost">$1,000</div>
+                        <div class="stat-label">Next Upgrade</div>
+                    </div>
+                </div>
+                <button class="btn btn-upgrade" id="upgradeBtn" onclick="upgradeEquipment()">
+                    ⬆️ Upgrade Equipment
+                </button>
+            </div>
+        </div>
+        
+        <!-- Mining Grid -->
+        <div class="section">
+            <div class="section-title">Select Cryptocurrency to Mine</div>
+            <div class="mining-grid" id="miningGrid">
+                <!-- Mining cards will be populated by JavaScript -->
+            </div>
+        </div>
+        
+        <!-- Mining Stats -->
+        <div class="section">
+            <div class="section-title">Mining Statistics</div>
+            <div class="stats-grid" id="miningStats">
+                <div class="stat-card">
+                    <div class="stat-card-value" id="totalMinedBTC">0</div>
+                    <div class="stat-card-label">BTC Mined</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-value" id="totalMinedETH">0</div>
+                    <div class="stat-card-label">ETH Mined</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-value" id="totalMinedBNB">0</div>
+                    <div class="stat-card-label">BNB Mined</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-card-value" id="totalMinedValue">$0</div>
+                    <div class="stat-card-label">Total Value</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="notification" id="notification"></div>
+
+    <script>
+        let currentUserId = '';
+        let miningData = null;
+        let lastMiningTime = null;
+        
+        const CRYPTO_CONFIG = {
+            'BTC': { name: 'Bitcoin', emoji: '₿', difficulty: 'Hard', color: '#f7931a' },
+            'ETH': { name: 'Ethereum', emoji: '🔷', difficulty: 'Medium', color: '#627eea' },
+            'BNB': { name: 'Binance Coin', emoji: '💠', difficulty: 'Medium', color: '#f3ba2f' },
+            'XRP': { name: 'Ripple', emoji: '⚡', difficulty: 'Easy', color: '#23292f' },
+            'ADA': { name: 'Cardano', emoji: '🃏', difficulty: 'Medium', color: '#0033ad' },
+            'DOGE': { name: 'Dogecoin', emoji: '🐕', difficulty: 'Easy', color: '#c2a633' },
+            'SOL': { name: 'Solana', emoji: '🔆', difficulty: 'Medium', color: '#00ffbd' },
+            'DOT': { name: 'Polkadot', emoji: '🔴', difficulty: 'Medium', color: '#e6007a' }
+        };
+        
+        // Форматирование чисел
+        function formatNumber(num, decimals = 2) {
+            if (num === 0 || !num) return '0';
+            const absNum = Math.abs(num);
+            const suffixes = ['', 'K', 'M', 'B', 'T'];
+            let suffixIndex = 0;
+            let reducedNum = absNum;
+            
+            while (reducedNum >= 1000 && suffixIndex < suffixes.length - 1) {
+                reducedNum /= 1000;
+                suffixIndex++;
+            }
+            
+            const sign = num < 0 ? '-' : '';
+            const formattedNum = reducedNum.toFixed(decimals);
+            let cleanNum = formattedNum;
+            
+            if (decimals > 0) {
+                cleanNum = formattedNum.replace(/\.?0+$/, '');
+                if (cleanNum.endsWith('.')) cleanNum = cleanNum.slice(0, -1);
+            }
+            
+            return sign + cleanNum + suffixes[suffixIndex];
+        }
+        
+        function formatCurrency(amount) {
+            return '$' + formatNumber(amount);
+        }
+        
+        // Инициализация
+        function initTelegram() {
+            if (window.Telegram && Telegram.WebApp) {
+                const tg = window.Telegram.WebApp;
+                tg.expand();
+                currentUserId = tg.initDataUnsafe.user?.id?.toString() || 'miner_' + Math.random().toString(36).substr(2, 9);
+            } else {
+                currentUserId = 'web_miner_' + Math.random().toString(36).substr(2, 9);
+            }
+        }
+        
+        // Уведомления
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.style.display = 'block';
+            setTimeout(() => notification.style.display = 'none', 3000);
+        }
+        
+        // Загрузка статуса майнинга
+        async function loadMiningStatus() {
+            try {
+                const response = await fetch('/api/mining/status', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: currentUserId })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    miningData = result.mining;
+                    updateMiningDisplay();
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Failed to load mining data: ' + error.message, 'error');
+            }
+        }
+        
+        // Обновление интерфейса майнинга
+        function updateMiningDisplay() {
+            if (!miningData) return;
+            
+            // Обновляем энергию
+            const energyPercent = (miningData.energy / miningData.max_energy) * 100;
+            document.getElementById('energyValue').textContent = `${miningData.energy}/${miningData.max_energy}`;
+            document.getElementById('energyFill').style.width = `${energyPercent}%`;
+            
+            // Обновляем оборудование
+            document.getElementById('equipmentName').textContent = miningData.equipment_name;
+            document.getElementById('equipmentLevel').textContent = `Level ${miningData.equipment_level}`;
+            document.getElementById('miningPower').textContent = `${miningData.mining_power}x`;
+            
+            const upgradeBtn = document.getElementById('upgradeBtn');
+            if (miningData.next_upgrade_cost) {
+                upgradeBtn.textContent = `⬆️ Upgrade (${formatCurrency(miningData.next_upgrade_cost)})`;
+                upgradeBtn.disabled = false;
+            } else {
+                upgradeBtn.textContent = '⬆️ Max Level Reached';
+                upgradeBtn.disabled = true;
+            }
+            
+            // Обновляем сетку майнинга
+            updateMiningGrid();
+            
+            // Обновляем статистику
+            updateMiningStats();
+        }
+        
+        // Обновление сетки майнинга
+        function updateMiningGrid() {
+            const miningGrid = document.getElementById('miningGrid');
+            miningGrid.innerHTML = '';
+            
+            for (const [symbol, config] of Object.entries(CRYPTO_CONFIG)) {
+                const miningCard = document.createElement('button');
+                miningCard.className = 'mining-card';
+                miningCard.onclick = () => mineCrypto(symbol);
+                miningCard.disabled = !miningData.can_mine;
+                
+                miningCard.innerHTML = `
+                    <div class="mining-emoji">${config.emoji}</div>
+                    <div class="mining-symbol">${symbol}</div>
+                    <div class="mining-difficulty">${config.difficulty}</div>
+                    <div class="mining-reward">Reward: ${getMiningReward(symbol)}</div>
+                    ${!miningData.can_mine ? '<div class="cooldown">Need 10 energy</div>' : ''}
+                `;
+                
+                miningGrid.appendChild(miningCard);
+            }
+        }
+        
+        // Получение награды за майнинг
+        function getMiningReward(symbol) {
+            const baseRewards = {
+                'BTC': '0.0001',
+                'ETH': '0.001', 
+                'BNB': '0.01',
+                'XRP': '0.1',
+                'ADA': '0.05',
+                'DOGE': '1.0',
+                'SOL': '0.02',
+                'DOT': '0.03'
+            };
+            return baseRewards[symbol] || '0.001';
+        }
+        
+        // Обновление статистики майнинга
+        function updateMiningStats() {
+            if (!miningData.total_mined) return;
+            
+            document.getElementById('totalMinedBTC').textContent = formatNumber(miningData.total_mined.BTC || 0, 6);
+            document.getElementById('totalMinedETH').textContent = formatNumber(miningData.total_mined.ETH || 0, 4);
+            document.getElementById('totalMinedBNB').textContent = formatNumber(miningData.total_mined.BNB || 0, 2);
+            
+            // Примерная стоимость добытого (можно улучшить)
+            const totalValue = Object.entries(miningData.total_mined).reduce((sum, [symbol, amount]) => {
+                const prices = {
+                    'BTC': 45000, 'ETH': 3000, 'BNB': 350, 'XRP': 0.6,
+                    'ADA': 0.5, 'DOGE': 0.15, 'SOL': 100, 'DOT': 7
+                };
+                return sum + (amount * (prices[symbol] || 0));
+            }, 0);
+            
+            document.getElementById('totalMinedValue').textContent = formatCurrency(totalValue);
+        }
+        
+        // Майнинг криптовалюты
+        async function mineCrypto(symbol) {
+            if (!miningData.can_mine) {
+                showNotification('Not enough energy!', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/mining/mine', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        user_id: currentUserId,
+                        symbol: symbol
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification(`Mining successful! +${formatNumber(result.reward, 6)} ${symbol} (${formatCurrency(result.value)})`);
+                    lastMiningTime = new Date();
+                    loadMiningStatus(); // Перезагружаем статус
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Mining failed: ' + error.message, 'error');
+            }
+        }
+        
+        // Апгрейд оборудования
+        async function upgradeEquipment() {
+            try {
+                const response = await fetch('/api/mining/upgrade', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_id: currentUserId })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    showNotification(result.message);
+                    loadMiningStatus(); // Перезагружаем статус
+                } else {
+                    showNotification(result.error, 'error');
+                }
+            } catch (error) {
+                showNotification('Upgrade failed: ' + error.message, 'error');
+            }
+        }
+        
+        // Авто-обновление энергии
+        setInterval(loadMiningStatus, 30000); // 30 секунд
+        
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', function() {
+            initTelegram();
+            loadMiningStatus();
+        });
+    </script>
+</body>
+</html>
