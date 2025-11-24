@@ -1,5 +1,3 @@
-[file name]: app.py
-[file content begin]
 from flask import Flask, request, jsonify, render_template
 import json
 import random
@@ -1568,4 +1566,3 @@ if __name__ == '__main__':
     print(f"⛏️ Mining: /mining")
     print(f"🔒 Admin user ID: {ADMIN_USER_ID}")
     app.run(host='0.0.0.0', port=port, debug=False)
-[file content end]
